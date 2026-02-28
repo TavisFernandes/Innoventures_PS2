@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --plugin-accent: #0050FF;
+  --plugin-accent-rgb: 0, 80, 255;
+  --plugin-accent-dim: #003399;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #050505;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a1a1f;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a2f;
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(5, 5, 5, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, var(--plugin-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-subtle {
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 40%, var(--plugin-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Ambient glow */
+.glow {
+  box-shadow: 0 0 30px rgba(var(--plugin-accent-rgb), 0.15),
+              0 0 60px rgba(var(--plugin-accent-rgb), 0.05);
+}
+
+.glow-sm {
+  box-shadow: 0 0 15px rgba(var(--plugin-accent-rgb), 0.12),
+              0 0 30px rgba(var(--plugin-accent-rgb), 0.04);
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(var(--plugin-accent-rgb), 0.3),
+               0 0 40px rgba(var(--plugin-accent-rgb), 0.1);
+}
+
+/* Plugin accent border */
+.accent-border-left {
+  border-left: 3px solid var(--plugin-accent);
+}
+
+/* Gradient border (using pseudo-element) */
+.gradient-border {
+  position: relative;
+  background: #111114;
+  border-radius: 12px;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 13px;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--plugin-accent), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* CTA gradient button */
+.btn-gradient {
+  background: linear-gradient(135deg, var(--plugin-accent), var(--plugin-accent-dim));
+  color: white;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.btn-gradient:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 20px rgba(var(--plugin-accent-rgb), 0.3);
+  transform: translateY(-1px);
+}
+
+/* Secondary outline button */
+.btn-outline {
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.btn-outline:hover {
+  border-color: var(--plugin-accent);
+  color: white;
+  background: rgba(var(--plugin-accent-rgb), 0.05);
+}
+
+/* Typing indicator animation */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+.typing-dot {
+  animation: typing-dot 1.4s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Transition for accent color changes */
+*, *::before, *::after {
+  transition-property: border-color, box-shadow, text-shadow;
+  transition-duration: 0.25s;
+  transition-timing-function: ease;
+}
