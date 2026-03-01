@@ -91,7 +91,7 @@ export default function EnterpriseSection() {
                                     delay: 0.1 + i * 0.08,
                                     ease: [0.25, 0.1, 0.25, 1],
                                 }}
-                                className="p-6 rounded-2xl bg-black/20 backdrop-blur-sm border border-white/[0.04] hover:bg-black/30 hover:backdrop-blur-md hover:border-white/[0.08] transition-all duration-250 group overflow-hidden"
+                                className="p-6 rounded-2xl bg-black/50 backdrop-blur-xl border border-white/[0.1] hover:bg-black/60 hover:backdrop-blur-2xl hover:border-white/[0.15] transition-all duration-250 group overflow-hidden"
                             >
                                 <div
                                     className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-all duration-250"

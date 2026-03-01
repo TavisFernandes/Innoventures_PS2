@@ -17,7 +17,6 @@ export default function ChatDemo() {
             }}
         >
             <div className="flex h-full">
-                <PluginRail />
                 <ChatPanel />
             </div>
         </div>
