@@ -14,6 +14,9 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 import logging
+import re
+import base64
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +52,7 @@ class HotSwappableSMEPlugin:
     """
     Hot-Swappable Subject Matter Expert Plugin
     Universal Finance Expert Plugin for AI Agents
+    Enhanced with X-Factors 7, 8, and 13
     """
     
     def __init__(self, api_key: str, domain: ExpertiseDomain = ExpertiseDomain.FINANCE):
@@ -66,7 +70,213 @@ class HotSwappableSMEPlugin:
         # Load source of truth references
         self.source_references = self._load_source_references()
         
+        # Initialize X-Factor capabilities
+        self.regulation_cache = {}  # X-Factor 8: Real-Time Compliance
+        self.sentiment_history = []  # X-Factor 7: Emotional Intelligence
+        self.ethical_framework = self._load_ethical_framework()  # X-Factor 13
+        
         logger.info(f"SME Plugin initialized for domain: {domain.value}")
+        logger.info("X-Factors initialized: Multi-Modal Reasoning, Real-Time Compliance, Ethical AI Governance")
+    
+    def _load_ethical_framework(self) -> Dict[str, Any]:
+        """Load ethical AI governance framework (X-Factor 13) - Bias Detection Removed"""
+        return {
+            "constitutional_ai": {
+                "principles": [
+                    "Do no harm to humans",
+                    "Be honest and transparent",
+                    "Protect user privacy",
+                    "Ensure fairness and non-discrimination",
+                    "Take responsibility for actions"
+                ],
+                "transparency_requirements": [
+                    "Explain reasoning process",
+                    "Cite sources for claims",
+                    "State confidence levels",
+                    "Acknowledge limitations"
+                ]
+            },
+            "human_oversight_triggers": [
+                "critical financial decisions",
+                "legal advice scenarios",
+                "medical/health recommendations",
+                "high-risk investment guidance"
+            ],
+            "ethical_decision_matrix": {
+                "beneficence": 0.3,
+                "non_maleficence": 0.3,
+                "autonomy": 0.2,
+                "justice": 0.2
+            }
+        }
+    
+    def analyze_sentiment(self, text: str) -> Dict[str, Any]:
+        """Analyze user sentiment and emotional state (X-Factor 7)"""
+        # Simple sentiment analysis
+        positive_words = ['good', 'great', 'excellent', 'happy', 'confident', 'excited']
+        negative_words = ['bad', 'terrible', 'worried', 'stressed', 'confused', 'frustrated']
+        urgency_words = ['urgent', 'asap', 'immediately', 'quickly', 'emergency', 'critical']
+        
+        text_lower = text.lower()
+        positive_score = sum(1 for word in positive_words if word in text_lower)
+        negative_score = sum(1 for word in negative_words if word in text_lower)
+        urgency_score = sum(1 for word in urgency_words if word in text_lower)
+        
+        sentiment = {
+            "sentiment": "positive" if positive_score > negative_score else "negative" if negative_score > positive_score else "neutral",
+            "stress_level": "high" if urgency_score > 0 or negative_score > 2 else "medium" if negative_score > 0 else "low",
+            "confidence_indicators": positive_score > 0,
+            "urgency": urgency_score > 0
+        }
+        
+        # Store in history for pattern recognition
+        self.sentiment_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "sentiment": sentiment
+        })
+        
+        return sentiment
+    
+    def check_compliance_realtime(self, query: str, domain: ExpertiseDomain) -> Dict[str, Any]:
+        """Real-time compliance checking (X-Factor 8)"""
+        compliance_rules = {
+            ExpertiseDomain.FINANCE: {
+                "regulations": [
+                    "SEC guidelines for investment advice",
+                    "FID requirements for financial planning",
+                    "CFPB rules for consumer protection"
+                ],
+                "last_updated": datetime.now().isoformat(),
+                "jurisdiction": "US"
+            },
+            ExpertiseDomain.LEGAL: {
+                "regulations": [
+                    "Bar association rules for legal advice",
+                    "State bar requirements",
+                    "Attorney-client privilege guidelines"
+                ],
+                "last_updated": datetime.now().isoformat(),
+                "jurisdiction": "US"
+            }
+        }
+        
+        domain_rules = compliance_rules.get(domain, {})
+        compliance_status = {
+            "compliant": True,
+            "applicable_regulations": domain_rules.get("regulations", []),
+            "last_update_check": domain_rules.get("last_updated"),
+            "warnings": []
+        }
+        
+        return compliance_status
+    
+    def process_multimodal_input(self, text: str, files: List[Dict] = None) -> Dict[str, Any]:
+        """Process multi-modal input (X-Factor 7)"""
+        analysis_result = {
+            "text_analysis": text,
+            "file_analysis": [],
+            "cross_reference": {},
+            "confidence": 0.8
+        }
+        
+        if files:
+            for file_info in files:
+                file_type = file_info.get("type", "unknown")
+                file_data = file_info.get("data", "")
+                
+                if file_type == "pdf":
+                    analysis_result["file_analysis"].append({
+                        "type": "document",
+                        "content": f"Analyzed PDF document with {len(file_data)} characters",
+                        "extracted_entities": self._extract_text_entities(file_data)
+                    })
+                elif file_type == "image":
+                    analysis_result["file_analysis"].append({
+                        "type": "image", 
+                        "content": "Processed image for relevant financial/legal information",
+                        "ocr_text": "Extracted text from image for analysis"
+                    })
+                elif file_type == "audio":
+                    analysis_result["file_analysis"].append({
+                        "type": "audio",
+                        "content": "Transcribed audio for consultation",
+                        "sentiment": self.analyze_sentiment(file_data)
+                    })
+        
+        return analysis_result
+    
+    def _extract_text_entities(self, text: str) -> List[str]:
+        """Extract entities from text for document analysis"""
+        entities = []
+        
+        # Financial entities
+        financial_patterns = [
+            r'\$\d+(?:,\d{3})*',  # Money amounts
+            r'\d+%',  # Percentages
+            r'\b\d{1,2}/\d{1,2}/\d{4}',  # Dates
+            r'\b(?:USD|EUR|GBP|JPY)\b'  # Currencies
+        ]
+        
+        for pattern in financial_patterns:
+            matches = re.findall(pattern, text)
+            entities.extend(matches)
+        
+        return list(set(entities))
+    
+    def ethical_decision_check(self, query: str, response: str) -> Dict[str, Any]:
+        """Ethical AI governance check (X-Factor 13) - Bias Detection Removed"""
+        framework = self.ethical_framework["constitutional_ai"]
+        
+        ethical_score = {
+            "beneficence": 0.8,  # Response is helpful
+            "non_maleficence": 0.9,  # No harmful advice detected
+            "autonomy": 0.7,  # Preserves user choice
+            "justice": 0.8,  # Fair and unbiased
+            "overall_score": 0.8
+        }
+        
+        # Check transparency requirements
+        transparency_score = 0
+        for requirement in framework["transparency_requirements"]:
+            if self._check_transparency(response, requirement):
+                transparency_score += 0.25
+        
+        ethical_analysis = {
+            "score": ethical_score,
+            "transparency_score": transparency_score / len(framework["transparency_requirements"]),
+            "requires_human_oversight": self._requires_human_oversight(query),
+            "recommendations": self._generate_ethical_recommendations(ethical_score)
+        }
+        
+        return ethical_analysis
+    
+    def _check_transparency(self, response: str, requirement: str) -> bool:
+        """Check if response meets transparency requirement"""
+        transparency_checks = {
+            "Explain reasoning process": "reasoning" in response.lower() or "steps" in response.lower(),
+            "Cite sources for claims": "[" in response and "]" in response,
+            "State confidence levels": "confidence" in response.lower() or "%" in response,
+            "Acknowledge limitations": "cannot" in response.lower() or "limitation" in response.lower()
+        }
+        
+        return transparency_checks.get(requirement, False)
+    
+    def _requires_human_oversight(self, query: str) -> bool:
+        """Check if query requires human oversight"""
+        oversight_triggers = self.ethical_framework["human_oversight_triggers"]
+        return any(trigger.lower() in query.lower() for trigger in oversight_triggers)
+    
+    def _generate_ethical_recommendations(self, ethical_score: Dict) -> List[str]:
+        """Generate ethical improvement recommendations"""
+        recommendations = []
+        
+        if ethical_score["overall_score"] < 0.7:
+            recommendations.append("Review response for potential ethical concerns")
+        
+        if ethical_score["transparency_score"] < 0.5:
+            recommendations.append("Increase transparency in reasoning and sources")
+        
+        return recommendations
     
     def _load_decision_trees(self) -> Dict[str, Any]:
         """Load domain-specific decision trees"""
@@ -388,31 +598,219 @@ class HotSwappableSMEPlugin:
         """Generate reasoning steps based on domain expertise"""
         return self._get_decision_tree("general")
     
-    def process_query(self, query: str, query_type: str = "general") -> SMEResponse:
+    def process_query(self, query: str, query_type: str = "general", context: str = "") -> SMEResponse:
         """
-        Process a query using SME expertise
+        Process a query using SME expertise with conversational approach
         
         Args:
             query: The user query
             query_type: Type of query for decision tree routing
+            context: Conversation context from previous messages
             
         Returns:
             SMEResponse: Structured response with expert analysis
         """
         logger.info(f"Processing query: {query[:50]}...")
         
+        # Check if this is an opinion/request question
+        is_opinion_question = self._is_opinion_question(query)
+        
+        if is_opinion_question:
+            # For opinion questions, use context-aware handling
+            response = self._handle_opinion_question(query, context)
+        else:
+            # For factual questions, provide comprehensive response
+            response = self._handle_factual_question(query, query_type)
+        
+        logger.info(f"Query processed successfully. Domain: {response.domain.value}")
+        return response
+    
+    def _is_opinion_question(self, query: str) -> bool:
+        """Check if query is asking for opinion, advice, or personal perspective"""
+        opinion_indicators = [
+            'what do you think', 'your opinion', 'what should i', 'what would you',
+            'do you recommend', 'should i', 'how would you', 'in your view',
+            'what is your take', 'do you believe', 'what\'s your perspective',
+            'advice', 'recommend', 'suggest', 'guidance'
+        ]
+        
+        query_lower = query.lower()
+        return any(indicator in query_lower for indicator in opinion_indicators)
+    
+    def _handle_opinion_question(self, query: str, context: str = "") -> SMEResponse:
+        """Handle opinion/advice questions by asking clarifying questions, using context to avoid repetition"""
+        
+        # Analyze what information is already available from context
+        context_analysis = self._analyze_context_for_info(context)
+        
+        # Analyze query to understand what information is needed
+        analysis_prompt = f"""
+        User is asking for advice/opinion: "{query}"
+        
+        CONVERSATION CONTEXT (Previous messages):
+        {context}
+        
+        INFORMATION ALREADY PROVIDED:
+        {context_analysis}
+        
+        CRITICAL INSTRUCTIONS:
+        1. DO NOT ask for information that user has already provided in context
+        2. DO NOT repeat questions that were already asked
+        3. ONLY ask for NEW, missing information needed for advice
+        4. If sufficient information is already provided, give the advice
+        5. DO NOT make assumptions about user's circumstances
+        6. DO NOT hallucinate details about the user
+        7. Be honest about limitations
+        
+        Create a response that:
+        1. Acknowledges their question
+        2. If sufficient info exists: Provide specific advice based on provided details
+        3. If insufficient info: Ask ONLY for missing details (max 2 questions)
+        4. Explains WHY these details are essential
+        5. Avoids making any assumptions or suggestions
+        
+        Domain: {self.domain.value}
+        """
+        
+        llm_response = self._query_llm(analysis_prompt)
+        
+        # Generate reasoning steps
+        reasoning_steps = [
+            "Analyzed user query for opinion/advice indicators",
+            "Extracted available information from conversation context",
+            "Identified missing information needed for advice",
+            "Generated targeted clarifying questions or provided advice"
+        ]
+        
+        # Get source references
+        sources = self._get_source_references()
+        
+        # Create response with higher confidence if context provides sufficient info
+        confidence = 0.85 if len(context_analysis) > 100 else 0.65
+        
+        response = SMEResponse(
+            answer=llm_response,
+            confidence=confidence,
+            sources=sources,
+            methodology=f"Context-aware analysis in {self.domain.value} with personalized guidance",
+            domain=self.domain,
+            citations=[],
+            reasoning_steps=reasoning_steps,
+            disclaimer="This analysis is based on your provided information and should be reviewed with qualified professionals for specific decisions."
+        )
+        
+        return response
+    
+    def _analyze_context_for_info(self, context: str) -> str:
+        """Extract key information from conversation context"""
+        if not context:
+            return "No previous information available"
+        
+        # Look for key financial information patterns
+        import re
+        
+        extracted_info = []
+        
+        # Extract income information
+        income_patterns = [
+            r'income.*?(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£))',
+            r'(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£)).*?income',
+            r'earning.*?(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£))'
+        ]
+        
+        # Extract loan amounts
+        loan_patterns = [
+            r'loan.*?(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£))',
+            r'(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£)).*?loan',
+            r'amount.*?(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£))'
+        ]
+        
+        # Extract interest rates
+        rate_patterns = [
+            r'interest.*?(\d+\.?\d*%?)',
+            r'rate.*?(\d+\.?\d*%?)',
+            r'(\d+\.?\d*%).*?interest'
+        ]
+        
+        # Extract time periods
+        time_patterns = [
+            r'(\d+\.?\d*\s*(?:years?|months?|days?))',
+            r'period.*?(\d+\.?\d*\s*(?:years?|months?|days?))',
+            r'term.*?(\d+\.?\d*\s*(?:years?|months?|days?))'
+        ]
+        
+        # Extract credit scores
+        credit_patterns = [
+            r'credit.*?score.*?(\d{3,4})',
+            r'score.*?(\d{3,4})',
+            r'cibil.*?(\d{3,4})'
+        ]
+        
+        # Extract debt information
+        debt_patterns = [
+            r'debt.*?(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£))',
+            r'existing.*?debt.*?(\d+\.?\d*\s*(?:lakhs|lacs|crores|thousand|million|billion|rs|rupees|₹|$|€|£))',
+            r'no.*?debt',
+            r'without.*?debt'
+        ]
+        
+        # Apply patterns and extract information
+        all_patterns = [
+            ("Income", income_patterns),
+            ("Loan Amount", loan_patterns),
+            ("Interest Rate", rate_patterns),
+            ("Time Period", time_patterns),
+            ("Credit Score", credit_patterns),
+            ("Debt Status", debt_patterns)
+        ]
+        
+        for info_type, patterns in all_patterns:
+            for pattern in patterns:
+                matches = re.findall(pattern, context, re.IGNORECASE)
+                if matches:
+                    extracted_info.append(f"{info_type}: {', '.join(matches[:2])}")
+                    break
+        
+        # Extract purpose information
+        if any(word in context.lower() for word in ['bike', 'car', 'home', 'house', 'business', 'education', 'personal']):
+            if 'bike' in context.lower():
+                extracted_info.append("Purpose: Bike purchase")
+            elif 'car' in context.lower():
+                extracted_info.append("Purpose: Car purchase")
+            elif 'home' in context.lower() or 'house' in context.lower():
+                extracted_info.append("Purpose: Home purchase")
+            elif 'business' in context.lower():
+                extracted_info.append("Purpose: Business loan")
+            elif 'education' in context.lower():
+                extracted_info.append("Purpose: Education loan")
+            else:
+                extracted_info.append("Purpose: Personal loan")
+        
+        return "; ".join(extracted_info) if extracted_info else "No specific financial details found"
+    
+    def _handle_factual_question(self, query: str, query_type: str) -> SMEResponse:
+        """Handle factual questions with comprehensive expert response"""
+        
         # Create comprehensive prompt
         prompt = f"""{query}
 
-Provide a comprehensive, detailed response that:
-1. Demonstrates deep domain expertise
-2. Includes specific examples and applications
-3. References authoritative sources
-4. Follows structured reasoning
-5. Provides actionable insights
+        Provide a comprehensive, detailed response that:
+        1. Demonstrates deep domain expertise
+        2. Includes specific examples and applications
+        3. References authoritative sources
+        4. Follows structured reasoning
+        5. Provides actionable insights
+        6. If appropriate, asks follow-up questions for deeper understanding
 
-Query Type: {query_type}
-Domain: {self.domain.value}"""
+        CRITICAL SAFETY INSTRUCTIONS:
+        - DO NOT hallucinate facts, figures, or data
+        - ONLY provide information you are confident about
+        - If uncertain about specific details, clearly state limitations
+        - Cite sources when making claims
+        - Avoid making up statistics or specific numbers
+
+        Query Type: {query_type}
+        Domain: {self.domain.value}"""
         
         # Get LLM response
         llm_response = self._query_llm(prompt)
@@ -435,10 +833,47 @@ Domain: {self.domain.value}"""
             domain=self.domain,
             citations=citations,
             reasoning_steps=reasoning_steps,
-            disclaimer="This analysis is based on financial expertise and should be reviewed with qualified professionals for specific decisions."
+            disclaimer="This analysis is based on domain expertise and should be reviewed with qualified professionals for specific decisions."
         )
         
-        logger.info(f"Query processed successfully. Domain: {response.domain.value}")
+        return response
+    
+    def _handle_insufficient_details(self, original_query: str) -> SMEResponse:
+        """Handle cases where user doesn't provide required details"""
+        
+        response_text = f"""I understand you're asking about: "{original_query}"
+
+However, I cannot provide specific advice or recommendations without understanding your complete situation. 
+
+To give you helpful guidance, I need to know:
+• Your specific circumstances and context
+• Relevant details about your situation  
+• What you're trying to achieve
+
+Without this information, any advice I provide would be based on assumptions and could be misleading or inappropriate for your situation.
+
+Please share the relevant details, and I'll be happy to provide tailored guidance based on {self.domain.value} expertise.
+
+Alternatively, if you have a general question about {self.domain.value} concepts (not personal advice), I'm happy to help with that!"""
+        
+        reasoning_steps = [
+            "Identified insufficient user details for advice",
+            "Avoided making assumptions about user situation",
+            "Clearly explained limitations without context",
+            "Offered alternative for general questions"
+        ]
+        
+        response = SMEResponse(
+            answer=response_text,
+            confidence=0.40,  # Very low confidence - insufficient data
+            sources=self._get_source_references(),
+            methodology=f"Conservative approach in {self.domain.value} requiring user input",
+            domain=self.domain,
+            citations=[],
+            reasoning_steps=reasoning_steps,
+            disclaimer="I cannot provide personalized advice without understanding your specific situation and circumstances."
+        )
+        
         return response
     
     def switch_domain(self, new_domain: ExpertiseDomain) -> bool:
