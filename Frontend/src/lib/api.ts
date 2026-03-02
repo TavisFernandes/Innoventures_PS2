@@ -109,10 +109,7 @@ class ApiService {
         },
         body: JSON.stringify({
           message: message,
-          files: fileData,
-          user_id: 'frontend_user',
-          session_id: this.sessionId,
-          context: contextPrompt
+          session_id: this.sessionId
         }),
       });
 
@@ -124,7 +121,7 @@ class ApiService {
       
       // Save message to backend
       await this.saveMessageToBackend(message, 'user', { files });
-      await this.saveMessageToBackend(data.answer, 'ai', {
+      await this.saveMessageToBackend(data.response, 'ai', {
         domain: data.domain,
         confidence: data.confidence,
         sources: data.sources,
