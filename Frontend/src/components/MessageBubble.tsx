@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { usePlugin } from "@/context/PluginContext";
-import { Bot, User, BookOpen, TrendingUp, Scale, Briefcase, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
+import { Bot, User, BookOpen, TrendingUp, Scale, Briefcase, ExternalLink, CheckCircle, AlertCircle, FileText } from "lucide-react";
 import { useState } from "react";
 
 interface MessageBubbleProps {

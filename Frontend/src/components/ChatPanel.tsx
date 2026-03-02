@@ -59,12 +59,9 @@ export default function ChatPanel() {
                 timestamp: new Date(),
             };
             setMessages((prev) => [...prev, welcomeMsg]);
-<<<<<<< HEAD
-=======
 
             // Scroll to bottom when welcome message appears
             setTimeout(() => scrollToBottom(), 100);
->>>>>>> 176ef804e3521c4e90cc76c749db8a1b2be05f73
         }
     }, [activePlugin, scrollToBottom]);
 
@@ -84,12 +81,9 @@ export default function ChatPanel() {
         setMessages((prev) => [...prev, userMsg]);
         setIsTyping(true);
         setError(null);
-<<<<<<< HEAD
-=======
 
         // Scroll to bottom when response arrives
         setTimeout(() => scrollToBottom(), 100);
->>>>>>> 176ef804e3521c4e90cc76c749db8a1b2be05f73
 
         try {
             let response;
@@ -133,12 +127,8 @@ export default function ChatPanel() {
             // Clear uploaded files after sending
             setUploadedFiles([]);
 
-<<<<<<< HEAD
-=======
             // Scroll to bottom when response arrives
             setTimeout(() => scrollToBottom(), 100);
-
->>>>>>> 176ef804e3521c4e90cc76c749db8a1b2be05f73
         } catch (err) {
             setIsTyping(false);
             setError("Failed to get response from backend. Please try again.");
@@ -151,12 +141,9 @@ export default function ChatPanel() {
                 timestamp: new Date(),
             };
             setMessages((prev) => [...prev, errorMsg]);
-<<<<<<< HEAD
-=======
 
             // Scroll to bottom when error message arrives
             setTimeout(() => scrollToBottom(), 100);
->>>>>>> 176ef804e3521c4e90cc76c749db8a1b2be05f73
         }
     };
 

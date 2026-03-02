@@ -299,6 +299,7 @@ class ApiService {
         const data = await response.json();
         return data.messages || [];
       }
+      return [];
     } catch (error) {
       console.error('Error getting chat history:', error);
       return [];
@@ -335,6 +336,7 @@ class ApiService {
         this.sessionId = this.getOrCreateSessionId();
         return true;
       }
+      return false;
     } catch (error) {
       console.error('Error clearing chat history:', error);
       return false;
