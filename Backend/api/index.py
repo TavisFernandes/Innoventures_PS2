@@ -38,13 +38,16 @@ async def health_check():
 async def chat(request: ChatRequest):
     response = f"This is a finance expert response to: {request.message}"
     
-    return ChatResponse(
-        response=response,
-        domain="finance",
-        confidence=0.85,
-        sources=["Mock Source 1", "Mock Source 2"],
-        methodology="RAG-based analysis with TF-IDF retrieval"
-    )
+    return {
+        "answer": response,
+        "domain": "finance",
+        "confidence": 0.85,
+        "sources": ["Mock Source 1", "Mock Source 2"],
+        "methodology": "RAG-based analysis with TF-IDF retrieval",
+        "citations": ["[1]", "[2]"],
+        "reasoning_steps": ["Analyzed query", "Retrieved documents", "Generated response"],
+        "disclaimer": "This is for educational purposes only."
+    }
 
 @app.post("/answer")
 async def answer_question(request: ChatRequest):
