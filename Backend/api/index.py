@@ -26,10 +26,30 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    response = f"This is a finance expert response to: {request.message}"
+    
+    return {
+        "answer": response,
+        "domain": "finance",
+        "confidence": 0.85,
+        "sources": ["Mock Source 1", "Mock Source 2"],
+        "methodology": "RAG-based analysis with TF-IDF retrieval",
+        "citations": ["[1]", "[2]"],
+        "reasoning_steps": ["Analyzed query", "Retrieved documents", "Generated response"],
+        "disclaimer": "This is for educational purposes only."
+    }
+
 @app.post("/answer")
 async def answer_question(request: ChatRequest):
     response = f"Finance expert answer: {request.message}"
     return {"answer": response}
 
-# Vercel serverless handler
+# Render handler
 handler = app
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
