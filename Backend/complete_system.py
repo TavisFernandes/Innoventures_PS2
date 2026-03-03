@@ -1303,6 +1303,8 @@ def main():
     print("Type 'info' to see available domains\n")
     
     # Initialize SME Plugin
+    from dotenv import load_dotenv
+    load_dotenv()
     api_key = os.getenv("OPENROUTER_API_KEY")  # Use environment variable
     sme_plugin = HotSwappableSMEPlugin(api_key, ExpertiseDomain.FINANCE)
     

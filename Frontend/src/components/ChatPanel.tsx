@@ -60,8 +60,8 @@ export default function ChatPanel() {
             };
             setMessages((prev) => [...prev, welcomeMsg]);
 
-            // Scroll to bottom when welcome message appears
-            setTimeout(() => scrollToBottom(), 100);
+            // Remove auto-scroll for welcome message
+            // setTimeout(() => scrollToBottom(), 100);
         }
     }, [activePlugin, scrollToBottom]);
 
@@ -82,8 +82,8 @@ export default function ChatPanel() {
         setIsTyping(true);
         setError(null);
 
-        // Scroll to bottom when response arrives
-        setTimeout(() => scrollToBottom(), 100);
+        // Remove auto-scroll - let user control scrolling
+        // setTimeout(() => scrollToBottom(), 500);
 
         try {
             let response;
@@ -114,21 +114,27 @@ export default function ChatPanel() {
             setMessages((prev) => [...prev, aiMsg]);
 
             if (response.domain) {
+                console.log("Response domain:", response.domain);
+                console.log("Current active plugin:", activePlugin.id);
                 const matched = plugins.find(p =>
                     p.id.toLowerCase() === response.domain.toLowerCase() ||
                     p.name.toLowerCase() === response.domain.toLowerCase() ||
                     p.persona.toLowerCase() === response.domain.toLowerCase()
                 );
+                console.log("Matched plugin:", matched);
                 if (matched && matched.id !== activePlugin.id) {
+                    console.log("Switching plugin from", activePlugin.id, "to", matched.id);
                     switchPlugin(matched.id);
+                } else {
+                    console.log("No plugin switch needed - matched:", matched, "active:", activePlugin.id);
                 }
             }
 
             // Clear uploaded files after sending
             setUploadedFiles([]);
 
-            // Scroll to bottom when response arrives
-            setTimeout(() => scrollToBottom(), 100);
+            // Remove auto-scroll - let user control scrolling
+            // setTimeout(() => scrollToBottom(), 500);
         } catch (err) {
             setIsTyping(false);
             setError("Failed to get response from backend. Please try again.");
@@ -142,8 +148,8 @@ export default function ChatPanel() {
             };
             setMessages((prev) => [...prev, errorMsg]);
 
-            // Scroll to bottom when error message arrives
-            setTimeout(() => scrollToBottom(), 100);
+            // Remove auto-scroll - let user control scrolling
+            // setTimeout(() => scrollToBottom(), 500);
         }
     };
 

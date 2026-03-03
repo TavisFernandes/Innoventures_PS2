@@ -120,12 +120,15 @@ class HealthResponse(BaseModel):
     version: str
     mongodb_connected: bool
 
+from dotenv import load_dotenv
+load_dotenv()
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize SME plugin and MongoDB on startup"""
     global sme_plugin
     try:
-        api_key = "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"
+        api_key = os.getenv("OPENROUTER_API_KEY", "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")
         sme_plugin = HotSwappableSMEPlugin(api_key, ExpertiseDomain.FINANCE)
         print("✅ SME Plugin initialized successfully")
         
@@ -446,8 +449,8 @@ if __name__ == "__main__":
     print("  POST /save_message - Save message")
     print("  GET  /history/{session_id} - Get chat history")
     print("  DELETE /clear_history/{session_id} - Clear chat history")
-    print("\n🔗 Server running on http://localhost:8001")
+    print("\n🔗 Server running on http://localhost:8000")
     print("🌐 CORS enabled for frontend on http://localhost:3000")
     print("🗄️ MongoDB integration for chat history")
     
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
