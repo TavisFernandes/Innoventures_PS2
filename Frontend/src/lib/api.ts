@@ -53,6 +53,7 @@ class ApiService {
   constructor() {
     this.baseUrl = API_BASE_URL;
     this.sessionId = this.getOrCreateSessionId();
+    console.log('ApiService initialized with baseUrl:', this.baseUrl);
   }
 
   private getOrCreateSessionId(): string {
@@ -294,13 +295,22 @@ class ApiService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`);
+      console.log('Health check attempting:', `${this.baseUrl}/health`);
+      const response = await fetch(`${this.baseUrl}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Health check response status:', response.status);
       
       if (!response.ok) {
         return false;
       }
 
       const data = await response.json();
+      console.log('Health check response data:', data);
       return data.status === 'healthy';
     } catch (error) {
       console.error('Health check failed:', error);
