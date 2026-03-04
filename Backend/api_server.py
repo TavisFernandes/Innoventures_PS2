@@ -142,7 +142,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://*.vercel.app", "https://*.netlify.app"],  # Frontend URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://hackx-yqda.vercel.app", "https://*.vercel.app", "https://*.netlify.app"],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
