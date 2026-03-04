@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, CheckCheck, Copy, Download, Sparkles } from "lucide-react";
-import Image from "next/image";
 import { usePlugin } from "@/context/PluginContext";
 import { Bot, User, BookOpen, TrendingUp, Scale, Briefcase, ExternalLink, CheckCircle, AlertCircle, FileText } from "lucide-react";
 import { useState } from "react";
@@ -221,11 +220,9 @@ export default function MessageBubble({
                                     <div key={file.id} className="flex items-center space-x-3 p-2 bg-white rounded border border-gray-200">
                                         {file.type.startsWith('image/') ? (
                                             <div className="w-16 h-16 rounded overflow-hidden">
-                                                <Image
+                                                <img
                                                     src={file.preview || ''}
                                                     alt={file.name}
-                                                    width={64}
-                                                    height={64}
                                                     className="w-full h-full object-cover"
                                                 />
                                             </div>
