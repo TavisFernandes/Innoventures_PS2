@@ -1,15 +1,17 @@
 services:
   - type: web
     name: plugmind-backend
-    env: python
+    runtime: python
     plan: free
-    buildCommand: "pip install fastapi uvicorn python-multipart"
-    startCommand: "python api/index.py"
+    rootDir: Backend
+    buildCommand: "pip install -r requirements-render.txt"
+    startCommand: "uvicorn api.index:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: GOOGLE_API_KEY
         sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.0"
     healthCheckPath: "/health"
-    healthCheckTimeout: 30
     autoDeploy: true
