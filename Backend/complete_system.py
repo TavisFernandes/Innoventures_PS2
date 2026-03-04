@@ -598,16 +598,22 @@ class HotSwappableSMEPlugin:
         }
         
         try:
+            print(f"🔍 Querying LLM with prompt: {prompt[:100]}...")
             response = requests.post(self.api_url, headers=self.headers, json=data, timeout=30)
+            print(f"📡 API Response Status: {response.status_code}")
+            
             if response.status_code == 200:
                 result = response.json()
-                return result['choices'][0]['message']['content']
+                answer = result['choices'][0]['message']['content']
+                print(f"✅ LLM Response: {answer[:100]}...")
+                return answer
             else:
-                logger.error(f"API Error: {response.status_code}")
-                return "Error: Unable to process query"
+                print(f"❌ API Error: {response.status_code}")
+                print(f"❌ Response Text: {response.text}")
+                return f"I apologize, but I'm experiencing technical difficulties with the AI service. Please try again later. (Error: {response.status_code})"
         except Exception as e:
-            logger.error(f"Query Error: {e}")
-            return "Error: Unable to process query"
+            print(f"❌ Query Error: {e}")
+            return f"I apologize, but I'm experiencing technical difficulties. Please try again later. (Error: {str(e)})"
     
     def _extract_citations(self, response: str) -> List[str]:
         """Extract citations from response"""
@@ -1306,6 +1312,15 @@ def main():
     from dotenv import load_dotenv
     load_dotenv()
     api_key = os.getenv("OPENROUTER_API_KEY")  # Use environment variable
+    
+    # Debug: Print API key status
+    print(f"🔑 API Key loaded: {'✅' if api_key and api_key.startswith('sk-or-v1-') else '❌'}")
+    print(f"🔑 API Key length: {len(api_key) if api_key else 0}")
+    
+    if not api_key:
+        print("❌ ERROR: OPENROUTER_API_KEY not found in environment variables!")
+        raise ValueError("OPENROUTER_API_KEY environment variable is required")
+    
     sme_plugin = HotSwappableSMEPlugin(api_key, ExpertiseDomain.FINANCE)
     
     # Load trained stock models
@@ -1317,11 +1332,12 @@ def main():
         
         headers = {
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://plugmind.ai"
         }
         
         data = {
-            "model": "anthropic/claude-3-haiku",
+            "model": "openai/gpt-3.5-turbo",
             "messages": [
                 {"role": "user", "content": prompt}
             ],
@@ -1341,7 +1357,21 @@ def main():
                     else:
                         print(f"Attempt {attempt + 1}: Response too short, retrying...")
                 else:
-                    print(f"Attempt {attempt + 1}: API not responding (status {response.status_code})")
+                    print(f"❌ Attempt {attempt + 1}: API Error {response.status_code}")
+                    if response.status_code == 401:
+                        print("❌ 401 Error: Invalid API key or authentication failed!")
+                        print("🔑 Please check your OpenRouter API key")
+                        print(f"🔑 Current key: {api_key[:20]}..." if api_key else "None")
+                        # Fallback response when API fails
+                        return f"I apologize, but I'm experiencing technical difficulties with the OpenRouter API. Please try again later. Your query was: {prompt[:100]}..."
+                    elif response.status_code == 429:
+                        print(f"⏱️ Rate limit exceeded, waiting {2 ** attempt} seconds...")
+                        time.sleep(2 ** attempt)
+                        continue
+                    elif response.status_code >= 500:
+                        print(f"🔥 Server error {response.status_code}, retrying...")
+                        time.sleep(2)
+                        continue
             except Exception as e:
                 print(f"Attempt {attempt + 1}: Error - {str(e)}")
         

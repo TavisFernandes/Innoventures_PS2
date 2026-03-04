@@ -235,7 +235,11 @@ async def startup_event():
     """Initialize SME plugin and MongoDB on startup"""
     global sme_plugin
     try:
-        api_key = os.getenv("OPENROUTER_API_KEY", "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")
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            print("❌ ERROR: OPENROUTER_API_KEY not found in environment variables!")
+            raise ValueError("OPENROUTER_API_KEY environment variable is required")
+        print(f"🔑 Using API Key: {api_key[:20]}...")
         sme_plugin = HotSwappableSMEPlugin(api_key, ExpertiseDomain.FINANCE)
         print("✅ SME Plugin initialized successfully")
         
