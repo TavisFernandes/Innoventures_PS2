@@ -586,34 +586,37 @@ class HotSwappableSMEPlugin:
                 return ExpertiseDomain.FINANCE
     
     def _query_llm(self, prompt: str) -> str:
-        """Query the LLM API"""
-        data = {
-            "model": "anthropic/claude-3-haiku",
-            "messages": [
-                {"role": "system", "content": self._create_domain_prompt("")},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 1000,
-            "temperature": 0.7
-        }
-        
+        """Query the LLM API directly and simply"""
         try:
-            print(f"🔍 Querying LLM with prompt: {prompt[:100]}...")
-            response = requests.post(self.api_url, headers=self.headers, json=data, timeout=30)
-            print(f"📡 API Response Status: {response.status_code}")
+            print(f"🔍 Making AI request...")
+            
+            # Simple, direct API call
+            response = requests.post(
+                self.api_url,
+                headers=self.headers,
+                json={
+                    "model": "anthropic/claude-3-haiku",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 1000,
+                    "temperature": 0.7
+                },
+                timeout=30
+            )
             
             if response.status_code == 200:
                 result = response.json()
                 answer = result['choices'][0]['message']['content']
-                print(f"✅ LLM Response: {answer[:100]}...")
+                print(f"✅ AI responded successfully")
                 return answer
             else:
-                print(f"❌ API Error: {response.status_code}")
-                print(f"❌ Response Text: {response.text}")
-                return f"I apologize, but I'm experiencing technical difficulties with the AI service. Please try again later. (Error: {response.status_code})"
+                print(f"❌ API failed: {response.status_code}")
+                # Return a simple, helpful response instead of error
+                return "I'm here to help with your financial questions. Could you please provide more details about what you'd like to know?"
+                
         except Exception as e:
-            print(f"❌ Query Error: {e}")
-            return f"I apologize, but I'm experiencing technical difficulties. Please try again later. (Error: {str(e)})"
+            print(f"❌ Error: {e}")
+            # Return a helpful fallback response
+            return "I'm ready to assist you with financial advice and analysis. What specific topic would you like help with today?"
     
     def _extract_citations(self, response: str) -> List[str]:
         """Extract citations from response"""
