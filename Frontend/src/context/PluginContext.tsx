@@ -17,6 +17,7 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     const updateCssVars = useCallback((plugin: Plugin) => {
+        if (typeof window === 'undefined') return;
         const root = document.documentElement;
         root.style.setProperty("--plugin-accent", plugin.accent);
         root.style.setProperty("--plugin-accent-rgb", plugin.accentRgb);
@@ -53,7 +54,15 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function usePlugin() {
-    const ctx = useContext(PluginContext);
-    if (!ctx) throw new Error("usePlugin must be used within PluginProvider");
-    return ctx;
+    const context = useContext(PluginContext);
+    // Return default values during SSR
+    if (!context) {
+        return {
+            activePlugin: PLUGINS[0],
+            switchPlugin: () => {},
+            plugins: PLUGINS,
+            isTransitioning: false
+        };
+    }
+    return context;
 }

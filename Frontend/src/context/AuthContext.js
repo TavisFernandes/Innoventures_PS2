@@ -5,7 +5,17 @@ import { createContext, useContext, useEffect, useState } from 'react';
 const AuthContext = createContext();
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  // Return default values during SSR
+  if (!context) {
+    return {
+      user: null,
+      loading: true,
+      signInWithGoogle: () => {},
+      signOut: () => {}
+    };
+  }
+  return context;
 }
 
 export function AuthProvider({ children }) {
