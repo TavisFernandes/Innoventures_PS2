@@ -140,6 +140,7 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+print("Setting up CORS middleware...")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins
@@ -147,6 +148,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+print("CORS middleware configured with allow_origins=['*']")
 
 # MongoDB Configuration
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
@@ -560,6 +562,7 @@ async def root():
         "message": "SME Plugin API Server with MongoDB Chat History",
         "version": "1.0.0",
         "mongodb_connected": mongo_client is not None,
+        "cors_enabled": True,
         "endpoints": {
             "health": "/health",
             "plugin_info": "/plugin/info",
@@ -571,6 +574,15 @@ async def root():
             "history": "/history/{session_id}",
             "clear_history": "/clear_history/{session_id}"
         }
+    }
+
+@app.get("/test-cors")
+async def test_cors():
+    """Test CORS endpoint"""
+    return {
+        "message": "CORS test successful",
+        "timestamp": str(datetime.now()),
+        "origin": "any origin allowed"
     }
 
 if __name__ == "__main__":
