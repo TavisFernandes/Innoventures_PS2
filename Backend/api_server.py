@@ -142,7 +142,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://hackx-yqda.vercel.app", "https://*.vercel.app", "https://*.netlify.app"],  # Frontend URLs
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://*.vercel.app", "https://*.netlify.app"],  # Frontend URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -311,9 +311,6 @@ async def chat(request: ChatRequest):
         if not context and mongo_client:
             context = get_context_from_mongodb(request.session_id)
         
-        # Combine context with current message
-        full_message = context + request.message
-        
         # Automatically detect domain and switch if needed
         detected_domain = sme_plugin.detect_domain(request.message)
         
@@ -323,19 +320,21 @@ async def chat(request: ChatRequest):
             sme_plugin.switch_domain(detected_domain)
             print(f"🔄 Auto-switched from {old_domain} to {detected_domain.value} domain")
         
-        # Process query with context
+        # Process query with context (faster response)
         query_type = "loan_analysis" if "loan" in request.message.lower() else "general"
         sme_response = sme_plugin.process_query(request.message, query_type, context)
         
-        # Save messages to Firebase
+        # Save messages to Firebase (async, non-blocking)
         if firebase_db:
-            save_chat_to_firebase(
+            # Use asyncio.create_task for non-blocking Firebase saves
+            import asyncio
+            asyncio.create_task(save_chat_to_firebase(
                 request.session_id,
                 request.user_id,
                 request.message,
                 "user"
-            )
-            save_chat_to_firebase(
+            ))
+            asyncio.create_task(save_chat_to_firebase(
                 request.session_id,
                 request.user_id,
                 sme_response.answer,
@@ -348,20 +347,7 @@ async def chat(request: ChatRequest):
                     "citations": sme_response.citations,
                     "disclaimer": sme_response.disclaimer
                 }
-            )
-        elif mongo_client:
-            # Fallback to MongoDB if Firebase is not available
-            save_message_to_mongodb(
-                request.session_id,
-                request.user_id,
-                request.message,
-                "user"
-            )
-            save_message_to_mongodb(
-                request.session_id,
-                request.user_id,
-                sme_response.answer,
-                "ai",
+            ))
                 {
                     "domain": sme_response.domain.value,
                     "confidence": sme_response.confidence,
