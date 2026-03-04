@@ -12,6 +12,111 @@ import sys
 import os
 from datetime import datetime
 import json
+import requests
+import yaml
+import joblib
+import numpy as np
+from threading import Thread
+from dataclasses import dataclass
+from enum import Enum
+import logging
+import re
+import base64
+from firebase_admin import credentials, auth, db
+from firebase_admin import firestore
+
+# Firebase Admin SDK initialization
+try:
+    import firebase_admin
+    from firebase_admin import credentials
+    from firebase_admin import db as firestore_db
+    from firebase_admin import auth as firebase_auth
+    
+    # Initialize Firebase Admin with service account
+    cred = credentials.Certificate({
+        "type": "service_account",
+        "project_id": "echelon-99796",
+        "private_key_id": "your-private-key-id",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nyour-private-key-content\n-----END PRIVATE KEY-----\n",
+        "client_email": "firebase-adminsdk-xxxxx@echelon-99796.iam.gserviceaccount.com",
+        "client_id": "your-client-id",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token"
+    })
+    
+    firebase_admin.initialize_app(cred)
+    firebase_db = firestore_db.client()
+    firebase_auth = firebase_auth
+    print("✅ Firebase Admin initialized")
+except Exception as e:
+    print(f"⚠️ Firebase initialization failed: {e}")
+    firebase_db = None
+    firebase_auth = None
+
+# Firebase chat storage functions
+def save_chat_to_firebase(session_id: str, user_id: str, message: str, sender: str):
+    """Save chat message to Firebase"""
+    if not firebase_db:
+        return
+    
+    try:
+        # Create a reference to the user's chats
+        chats_ref = firebase_db.collection('users').document(user_id).collection('chats')
+        
+        # Create a new chat document or update existing one
+        chat_data = {
+            'message': message,
+            'sender': sender,
+            'timestamp': datetime.now().isoformat(),
+            'lastUpdated': datetime.now().isoformat()
+        }
+        
+        # Use session_id as document ID
+        chats_ref.document(session_id).set(chat_data)
+        print(f"✅ Chat saved to Firebase: {session_id}")
+    except Exception as e:
+        print(f"❌ Error saving chat to Firebase: {e}")
+
+def get_chat_history_from_firebase(user_id: str) -> List[dict]:
+    """Get chat history from Firebase"""
+    if not firebase_db:
+        return []
+    
+    try:
+        chats_ref = firebase_db.collection('users').document(user_id).collection('chats')
+        chats_snapshot = chats_ref.get()
+        
+        if chats_snapshot.exists:
+            chats = []
+            for chat_doc in chats_snapshot.to_dict():
+                # Get all messages for this chat
+                messages_ref = firebase_db.collection('users').document(user_id).collection('chats').document(chat_doc['id']).collection('messages')
+                messages_snapshot = messages_ref.get()
+                
+                chat_data = {
+                    'id': chat_doc['id'],
+                    'lastUpdated': chat_doc.get('lastUpdated', ''),
+                    'messages': []
+                }
+                
+                if messages_snapshot.exists:
+                    for msg_doc in messages_snapshot.to_dict().values():
+                        chat_data['messages'].append({
+                            'text': msg_doc.get('message', ''),
+                            'sender': msg_doc.get('sender', ''),
+                            'timestamp': msg_doc.get('timestamp', '')
+                        })
+                
+                chats.append(chat_data)
+            
+            # Sort by lastUpdated (newest first)
+            chats.sort(key=lambda x: x.get('lastUpdated', ''), reverse=True)
+            return chats
+        else:
+            return []
+    except Exception as e:
+        print(f"❌ Error getting chat history from Firebase: {e}")
+        return []
 
 # Add current directory to Python path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -93,9 +198,9 @@ class ChatRequest(BaseModel):
     context: Optional[str] = ""
 
 class SaveMessageRequest(BaseModel):
+    message: str
     session_id: str
     user_id: str
-    message: str
     sender: str
     domain: Optional[str] = None
     confidence: Optional[float] = None
@@ -222,8 +327,30 @@ async def chat(request: ChatRequest):
         query_type = "loan_analysis" if "loan" in request.message.lower() else "general"
         sme_response = sme_plugin.process_query(request.message, query_type, context)
         
-        # Save messages to MongoDB
-        if mongo_client:
+        # Save messages to Firebase
+        if firebase_db:
+            save_chat_to_firebase(
+                request.session_id,
+                request.user_id,
+                request.message,
+                "user"
+            )
+            save_chat_to_firebase(
+                request.session_id,
+                request.user_id,
+                sme_response.answer,
+                "ai",
+                {
+                    "domain": sme_response.domain.value,
+                    "confidence": sme_response.confidence,
+                    "sources": sme_response.sources,
+                    "methodology": sme_response.methodology,
+                    "citations": sme_response.citations,
+                    "disclaimer": sme_response.disclaimer
+                }
+            )
+        elif mongo_client:
+            # Fallback to MongoDB if Firebase is not available
             save_message_to_mongodb(
                 request.session_id,
                 request.user_id,
@@ -271,12 +398,12 @@ async def get_context(session_id: str):
 
 @app.post("/save_message")
 async def save_message(request: SaveMessageRequest):
-    """Save a message to MongoDB"""
-    if messages_collection is None:
-        return {"status": "error", "message": "MongoDB not connected"}
+    """Save a message to Firebase"""
+    if not firebase_db:
+        raise HTTPException(status_code=500, detail="Firebase not initialized")
     
     try:
-        save_message_to_mongodb(
+        save_chat_to_firebase(
             request.session_id,
             request.user_id,
             request.message,
@@ -290,21 +417,27 @@ async def save_message(request: SaveMessageRequest):
                 "disclaimer": request.disclaimer
             }
         )
-        return {"status": "success", "message": "Message saved"}
+        return {"message": "Message saved successfully"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history/{session_id}")
 async def get_chat_history(session_id: str, limit: int = 50):
-    """Get chat history for a session"""
-    if messages_collection is None:
-        return {"messages": []}
-    
+    """Get chat history for a specific session"""
     try:
         history = get_chat_history_from_mongodb(session_id, limit)
         return {"messages": history}
     except Exception as e:
         return {"messages": [], "error": str(e)}
+
+@app.get("/user-history/{user_id}")
+async def get_user_chat_history(user_id: str, limit: int = 50):
+    """Get all chat sessions for a specific user"""
+    try:
+        history = get_user_chat_sessions_from_mongodb(user_id, limit)
+        return {"sessions": history}
+    except Exception as e:
+        return {"sessions": [], "error": str(e)}
 
 @app.delete("/clear_history/{session_id}")
 async def clear_chat_history(session_id: str):
@@ -392,6 +525,33 @@ def save_message_to_mongodb(session_id: str, user_id: str, message: str, sender:
     except Exception as e:
         print(f"Error saving message: {e}")
 
+def get_user_chat_sessions_from_mongodb(user_id: str, limit: int = 50) -> List[dict]:
+    """Get all chat sessions for a specific user"""
+    if sessions_collection is None:
+        return []
+    
+    try:
+        # Get all sessions for this user, sorted by most recent
+        sessions = list(
+            sessions_collection.find({"user_id": user_id})
+            .sort("updated_at", -1)
+            .limit(limit)
+        )
+        
+        # Convert ObjectId to string and format
+        for session in sessions:
+            session["_id"] = str(session["_id"])
+            if "updated_at" in session:
+                session["updated_at"] = session["updated_at"].isoformat()
+            if "created_at" in session:
+                session["created_at"] = session["created_at"].isoformat()
+        
+        return sessions
+        
+    except Exception as e:
+        print(f"Error getting user sessions: {e}")
+        return []
+
 def get_chat_history_from_mongodb(session_id: str, limit: int = 50) -> List[dict]:
     """Get chat history from MongoDB"""
     if messages_collection is None:
@@ -437,20 +597,5 @@ async def root():
     }
 
 if __name__ == "__main__":
-    print("🚀 SME Plugin FastAPI Server Starting...")
-    print("📍 Available endpoints:")
-    print("  GET  / - Root endpoint")
-    print("  GET  /health - Health check")
-    print("  GET  /plugin/info - Plugin information")
-    print("  GET  /plugin/domains - Available domains")
-    print("  POST /plugin/switch_domain - Switch expertise domain")
-    print("  POST /chat - Process chat message")
-    print("  GET  /context/{session_id} - Get conversation context")
-    print("  POST /save_message - Save message")
-    print("  GET  /history/{session_id} - Get chat history")
-    print("  DELETE /clear_history/{session_id} - Clear chat history")
-    print("\n🔗 Server running on http://localhost:8000")
-    print("🌐 CORS enabled for frontend on http://localhost:3000")
-    print("🗄️ MongoDB integration for chat history")
-    
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
