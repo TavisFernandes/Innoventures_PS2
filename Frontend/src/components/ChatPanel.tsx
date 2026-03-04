@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlugin } from "@/context/PluginContext";
 import { useAuth } from "@/context/AuthContext";
-import { apiService, ChatMessage } from "@/lib/api";
+import { ChatMessage } from "@/lib/api";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import TypingIndicator from "./TypingIndicator";
@@ -21,12 +21,17 @@ export default function ChatPanel() {
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const apiServiceRef = useRef(apiService);
+    const apiServiceRef = useRef<any>(null);
 
-    // Set user ID when user is available
+    // Initialize API service only on client side
     useEffect(() => {
-        if (user?.uid) {
-            apiServiceRef.current.setUserId(user.uid);
+        if (typeof window !== 'undefined') {
+            import('@/lib/api').then(({ apiService }) => {
+                apiServiceRef.current = apiService;
+                if (user?.uid) {
+                    apiServiceRef.current.setUserId(user.uid);
+                }
+            });
         }
     }, [user]);
 
@@ -79,8 +84,10 @@ export default function ChatPanel() {
     };
     useEffect(() => {
         const checkConnection = async () => {
+            if (!apiServiceRef.current) return;
+            
             try {
-                const isHealthy = await apiService.healthCheck();
+                const isHealthy = await apiServiceRef.current.healthCheck();
                 setIsConnected(isHealthy);
                 if (!isHealthy) {
                     setError("Unable to connect to backend. Please check your internet connection and try again.");
@@ -134,9 +141,9 @@ export default function ChatPanel() {
 
             // Use multi-modal messaging if files are uploaded
             if (uploadedFiles.length > 0) {
-                response = await apiService.sendMultiModalMessage(text, uploadedFiles);
+                response = await apiServiceRef.current.sendMultiModalMessage(text, uploadedFiles);
             } else {
-                response = await apiService.sendMessage(text);
+                response = await apiServiceRef.current.sendMessage(text);
             }
 
             setIsTyping(false);

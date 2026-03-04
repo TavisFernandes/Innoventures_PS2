@@ -56,6 +56,11 @@ class ApiService {
   }
 
   private getOrCreateSessionId(): string {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      return 'server-session-' + Date.now();
+    }
+    
     // Check if we're continuing a previous session
     const storedSessionId = localStorage.getItem('currentSessionId');
     if (storedSessionId) {
