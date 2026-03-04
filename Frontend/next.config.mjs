@@ -4,6 +4,13 @@ const nextConfig = {
   trailingSlash: true,
   images: {
     unoptimized: true
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': './src'
+    };
+    return config;
   }
 };
 
