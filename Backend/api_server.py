@@ -308,6 +308,46 @@ async def switch_domain(request: SwitchDomainRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/test-ai")
+async def test_ai():
+    """Test AI endpoint to verify API is working"""
+    try:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        print(f"🔑 Test API Key: {api_key[:20] if api_key else 'None'}...")
+        
+        if not api_key:
+            return {"error": "No API key configured"}
+        
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "anthropic/claude-3-haiku",
+                "messages": [{"role": "user", "content": "Say hello in exactly 5 words"}],
+                "max_tokens": 10,
+                "temperature": 0.7
+            },
+            timeout=30
+        )
+        
+        print(f"📡 Test API Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_answer = result['choices'][0]['message']['content']
+            print(f"✅ Test AI Response: {ai_answer}")
+            return {"status": "success", "response": ai_answer}
+        else:
+            print(f"❌ Test API Error: {response.status_code} - {response.text}")
+            return {"status": "error", "error": response.text}
+            
+    except Exception as e:
+        print(f"❌ Test Error: {e}")
+        return {"status": "error", "error": str(e)}
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Process a chat message using SME expertise with context"""
@@ -352,8 +392,11 @@ async def chat(request: ChatRequest):
             ai_answer = result['choices'][0]['message']['content']
             print(f"✅ AI Response: {ai_answer[:100]}...")
             
+            # Add timestamp to ensure fresh responses
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            
             return ChatResponse(
-                answer=ai_answer,
+                answer=f"[{timestamp}] {ai_answer}",
                 confidence=0.85,
                 sources=["OpenRouter API"],
                 methodology="Direct AI response",
