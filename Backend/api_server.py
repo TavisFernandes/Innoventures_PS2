@@ -311,67 +311,79 @@ async def switch_domain(request: SwitchDomainRequest):
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Process a chat message using SME expertise with context"""
-    if not sme_plugin:
-        raise HTTPException(status_code=500, detail="Plugin not initialized")
+    print(f"🔍 Received message: {request.message[:50]}...")
     
+    # Simple direct AI response - no complex logic
     try:
-        # Get context from MongoDB if available
-        context = request.context or ""
-        if not context and mongo_client:
-            context = get_context_from_mongodb(request.session_id)
+        # Direct OpenRouter API call
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            return ChatResponse(
+                answer="API key not configured. Please check server configuration.",
+                confidence=0.0,
+                sources=[],
+                methodology="Direct API call",
+                domain="finance",
+                citations=[],
+                disclaimer="Server configuration error"
+            )
         
-        # Automatically detect domain and switch if needed
-        detected_domain = sme_plugin.detect_domain(request.message)
+        print(f"� Using API key: {api_key[:20]}...")
         
-        # Switch domain if different from current
-        if detected_domain != sme_plugin.domain:
-            old_domain = sme_plugin.domain.value
-            sme_plugin.switch_domain(detected_domain)
-            print(f"🔄 Auto-switched from {old_domain} to {detected_domain.value} domain")
-        
-        # Process query with context (faster response)
-        query_type = "loan_analysis" if "loan" in request.message.lower() else "general"
-        sme_response = sme_plugin.process_query(request.message, query_type, context)
-        
-        # Save messages to Firebase (async, non-blocking)
-        if firebase_db:
-            # Use asyncio.create_task for non-blocking Firebase saves
-            import asyncio
-            asyncio.create_task(save_chat_to_firebase(
-                request.session_id,
-                request.user_id,
-                request.message,
-                "user"
-            ))
-            asyncio.create_task(save_chat_to_firebase(
-                request.session_id,
-                request.user_id,
-                sme_response.answer,
-                "ai",
-                {
-                    "domain": sme_response.domain.value,
-                    "confidence": sme_response.confidence,
-                    "sources": sme_response.sources,
-                    "methodology": sme_response.methodology,
-                    "citations": sme_response.citations,
-                    "disclaimer": sme_response.disclaimer
-                }
-            ))
-        
-        # Return response immediately (no delays)
-        return ChatResponse(
-            answer=sme_response.answer,
-            confidence=sme_response.confidence,
-            sources=sme_response.sources,
-            methodology=sme_response.methodology,
-            domain=sme_response.domain.value,
-            citations=sme_response.citations,
-            disclaimer=sme_response.disclaimer
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "anthropic/claude-3-haiku",
+                "messages": [{"role": "user", "content": request.message}],
+                "max_tokens": 1000,
+                "temperature": 0.7
+            },
+            timeout=30
         )
         
+        print(f"📡 API Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_answer = result['choices'][0]['message']['content']
+            print(f"✅ AI Response: {ai_answer[:100]}...")
+            
+            return ChatResponse(
+                answer=ai_answer,
+                confidence=0.85,
+                sources=["OpenRouter API"],
+                methodology="Direct AI response",
+                domain="finance",
+                citations=[],
+                disclaimer="This is an AI-generated response. Please verify important information."
+            )
+        else:
+            print(f"❌ API Error: {response.status_code} - {response.text}")
+            return ChatResponse(
+                answer=f"I'm having trouble connecting to my AI service right now. However, I can still help you with general financial guidance. What specific financial topic would you like to discuss?",
+                confidence=0.5,
+                sources=[],
+                methodology="Fallback response",
+                domain="finance",
+                citations=[],
+                disclaimer="AI service temporarily unavailable"
+            )
+            
     except Exception as e:
-        print(f"Error processing chat message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ Error: {e}")
+        return ChatResponse(
+            answer=f"I'm experiencing technical difficulties, but I'm here to help. Please try again or let me know what financial topic you'd like to explore.",
+            confidence=0.3,
+            sources=[],
+            methodology="Error handling",
+            domain="finance",
+            citations=[],
+            disclaimer="Service temporarily unavailable"
+        )
 
 @app.get("/context/{session_id}")
 async def get_context(session_id: str):
