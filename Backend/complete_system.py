@@ -504,7 +504,10 @@ class HotSwappableSMEPlugin:
             'statutory', 'regulatory', 'compliance', 'legal framework', 'legal system',
             'judicial', 'legislative', 'executive', 'legal precedent', 'legal principle',
             'legal doctrine', 'legal interpretation', 'legal obligation', 'legal liability',
-            'legal advice', 'legal opinion', 'legal counsel', 'legal document'
+            'legal advice', 'legal opinion', 'legal counsel', 'legal document',
+            'defamation', 'slander', 'libel', 'defame', 'fir', 'police complaint',
+            'ipc', 'section', 'penal code', 'cyber crime', 'cybercrime', 'harassment',
+            'rights', 'legal action', 'advocate', 'petition', 'writ', 'bail', 'arrest'
         ]
         
         # Finance keywords - lower priority
@@ -526,7 +529,11 @@ class HotSwappableSMEPlugin:
         logger.info(f"Query: {query_lower}")
         
         # Priority 1: Explicit legal terms (highest weight)
-        explicit_legal_terms = ['preamble', 'constitution', 'statute', 'act', 'code', 'court', 'judge', 'lawyer', 'attorney', 'lawsuit']
+        explicit_legal_terms = [
+            'preamble', 'constitution', 'statute', 'act', 'code', 'court', 'judge', 
+            'lawyer', 'attorney', 'lawsuit', 'defamation', 'slander', 'libel', 
+            'fir', 'ipc', 'section', 'penal code', 'advocate', 'petition', 'writ'
+        ]
         if any(term in query_lower for term in explicit_legal_terms):
             logger.info("Detected explicit legal terms - returning LEGAL domain")
             return ExpertiseDomain.LEGAL

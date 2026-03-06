@@ -23,6 +23,8 @@ export default function ChatPanel() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const apiServiceRef = useRef<any>(null);
 
+    const [isAutoSwitching, setIsAutoSwitching] = useState(false);
+
     const prevPluginRef = useRef(activePlugin.id);
 
     const scrollToBottom = useCallback(() => {
@@ -106,10 +108,17 @@ export default function ChatPanel() {
             console.error('Error loading session history:', error);
         }
     };
-    // Add welcome message when plugin changes
+    // Add welcome message when plugin changes (but not on auto-switch)
     useEffect(() => {
         if (prevPluginRef.current !== activePlugin.id) {
             prevPluginRef.current = activePlugin.id;
+            
+            // Skip welcome message if this was an automatic domain switch
+            if (isAutoSwitching) {
+                setIsAutoSwitching(false);
+                return;
+            }
+            
             const welcomeMsg: ChatMessage = {
                 id: `welcome-${activePlugin.id}-${Date.now()}`,
                 text: `${activePlugin.persona} activated. I specialize in ${activePlugin.description.toLowerCase()}. How can I assist you today?`,
@@ -121,7 +130,7 @@ export default function ChatPanel() {
             // Remove auto-scroll for welcome message
             // setTimeout(() => scrollToBottom(), 100);
         }
-    }, [activePlugin, scrollToBottom]);
+    }, [activePlugin, scrollToBottom, isAutoSwitching]);
 
     const handleSend = async (text: string) => {
         // Allow sending messages even if connection check failed
@@ -174,14 +183,29 @@ export default function ChatPanel() {
             if (response.domain) {
                 console.log("Response domain:", response.domain);
                 console.log("Current active plugin:", activePlugin.id);
-                const matched = plugins.find(p =>
-                    p.id.toLowerCase() === response.domain.toLowerCase() ||
-                    p.name.toLowerCase() === response.domain.toLowerCase() ||
-                    p.persona.toLowerCase() === response.domain.toLowerCase()
-                );
+                
+                // Map backend domain names to frontend plugin IDs
+                const domainMapping: { [key: string]: string } = {
+                    'legal': 'legal',
+                    'contract_law': 'legal',
+                    'corporate_law': 'legal',
+                    'regulatory_compliance': 'legal',
+                    'finance': 'finance',
+                    'banking': 'finance',
+                    'investment': 'finance',
+                    'risk_management': 'finance',
+                    'loan_analysis': 'finance'
+                };
+                
+                const targetPluginId = domainMapping[response.domain.toLowerCase()] || response.domain.toLowerCase();
+                console.log("Target plugin ID:", targetPluginId);
+                
+                const matched = plugins.find(p => p.id.toLowerCase() === targetPluginId);
                 console.log("Matched plugin:", matched);
+                
                 if (matched && matched.id !== activePlugin.id) {
                     console.log("Switching plugin from", activePlugin.id, "to", matched.id);
+                    setIsAutoSwitching(true); // Mark as auto-switch to suppress welcome message
                     switchPlugin(matched.id);
                 } else {
                     console.log("No plugin switch needed - matched:", matched, "active:", activePlugin.id);
