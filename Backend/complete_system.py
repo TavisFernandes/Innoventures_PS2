@@ -612,24 +612,19 @@ Sources:
         try:
             print(f"🔍 Making AI request...")
             
-            # Get domain-specific system prompt (includes all formatting requirements)
-            system_prompt = self._create_domain_prompt(prompt)
+            # Get clean domain-specific system prompt (NOT passing prompt as it's not used)
+            system_prompt = self._create_domain_prompt("")
             
-            # Combine system instructions with user query
-            full_prompt = f"""{system_prompt}
-
-USER QUERY:
-{prompt}
-
-Remember to follow all formatting requirements strictly, including citations in [1], [2], [3] format after every claim."""
-            
-            # Direct API call
+            # Direct API call with system message and user message separated
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
                 json={
                     "model": "anthropic/claude-3-haiku",
-                    "messages": [{"role": "user", "content": full_prompt}],
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
                     "max_tokens": 1500,
                     "temperature": 0.7
                 },
