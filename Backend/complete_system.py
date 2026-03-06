@@ -608,33 +608,20 @@ Sources:
                 return ExpertiseDomain.FINANCE
     
     def _query_llm(self, prompt: str) -> str:
-        """Query the LLM API with enhanced formatting instructions"""
+        """Query the LLM API with domain-specific system prompt"""
         try:
             print(f"🔍 Making AI request...")
             
-            # Enhanced prompt with strict formatting requirements
-            enhanced_prompt = f"""{prompt}
+            # Get domain-specific system prompt (includes all formatting requirements)
+            system_prompt = self._create_domain_prompt(prompt)
+            
+            # Combine system instructions with user query
+            full_prompt = f"""{system_prompt}
 
-MANDATORY RESPONSE FORMAT:
-- Include citations [1], [2], [3] after EVERY factual statement
-- Use proper paragraph structure with line breaks
-- Use bullet points for lists
-- End with Sources section listing all references
+USER QUERY:
+{prompt}
 
-Example format:
-The legal principle states that... [1]. In Indian jurisprudence, this is further clarified by... [2].
-
-Key considerations:
-• First consideration with citation [1]
-• Second consideration with citation [3]
-• Third consideration with citation [2]
-
-Sources:
-[1] Source name and details
-[2] Another source reference
-[3] Third source reference
-
-Now respond following this format strictly."""
+Remember to follow all formatting requirements strictly, including citations in [1], [2], [3] format after every claim."""
             
             # Direct API call
             response = requests.post(
@@ -642,7 +629,7 @@ Now respond following this format strictly."""
                 headers=self.headers,
                 json={
                     "model": "anthropic/claude-3-haiku",
-                    "messages": [{"role": "user", "content": enhanced_prompt}],
+                    "messages": [{"role": "user", "content": full_prompt}],
                     "max_tokens": 1500,
                     "temperature": 0.7
                 },
