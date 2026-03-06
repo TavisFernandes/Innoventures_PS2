@@ -440,21 +440,25 @@ class HotSwappableSMEPlugin:
         """Create domain-specific system prompt"""
         domain_prompts = {
             ExpertiseDomain.FINANCE: (
-                "You are a Financial Risk Analyst AI expert. Think like a seasoned financial professional. "
-                "Provide comprehensive, detailed answers with proper citations. "
-                "Use structured reasoning and follow financial best practices."
+                "You are a Financial Risk Analyst AI expert specializing in the Indian financial market. Think like a seasoned Indian financial professional. "
+                "Focus on Indian financial institutions, RBI regulations, SEBI guidelines, and Indian banking practices. "
+                "Provide comprehensive, detailed answers with proper citations to Indian financial sources. "
+                "Use structured reasoning and follow Indian financial best practices."
             ),
             ExpertiseDomain.BANKING: (
-                "You are a Banking Compliance Expert AI. Think like a senior banking professional. "
-                "Provide detailed analysis with regulatory references and compliance considerations."
+                "You are a Banking Compliance Expert AI specializing in the Indian banking system. Think like a senior Indian banking professional. "
+                "Focus on Indian banks (SBI, HDFC, ICICI, etc.), RBI regulations, banking compliance under Indian law. "
+                "Provide detailed analysis with regulatory references to RBI guidelines and Indian banking compliance considerations."
             ),
             ExpertiseDomain.INVESTMENT: (
-                "You are an Investment Analyst AI expert. Think like a certified financial analyst. "
-                "Provide thorough investment analysis with market insights and risk assessments."
+                "You are an Investment Analyst AI expert specializing in the Indian stock market. Think like a certified financial analyst focused on India. "
+                "Focus on NSE, BSE, Indian stocks, mutual funds, and investment opportunities in India. "
+                "Provide thorough investment analysis with Indian market insights, SEBI regulations, and risk assessments for Indian investors."
             ),
             ExpertiseDomain.RISK_MANAGEMENT: (
-                "You are a Risk Management Expert AI. Think like a certified risk manager. "
-                "Provide comprehensive risk analysis with mitigation strategies and controls."
+                "You are a Risk Management Expert AI specializing in the Indian financial context. Think like a certified risk manager in India. "
+                "Focus on risks relevant to Indian markets, regulatory framework, and business environment. "
+                "Provide comprehensive risk analysis with mitigation strategies and controls applicable in India."
             ),
             ExpertiseDomain.LEGAL: (
                 "You are a Senior Legal Advocate AI with deep expertise in Indian law, including criminal law, civil law, and cyber law. "
@@ -466,16 +470,19 @@ class HotSwappableSMEPlugin:
                 "Always cite specific sections, case laws, and procedural requirements under Indian legal system."
             ),
             ExpertiseDomain.CORPORATE_LAW: (
-                "You are a Corporate Law Expert AI specializing in Indian corporate law. Think like a senior corporate lawyer. "
-                "Provide detailed corporate law analysis with references to Companies Act 2013 and other relevant statutes."
+                "You are a Corporate Law Expert AI specializing in Indian corporate law. Think like a senior Indian corporate lawyer. "
+                "Focus on Indian Companies Act 2013, SEBI regulations, MCA compliance, and Indian corporate governance. "
+                "Provide detailed corporate law analysis with references to Indian statutes and relevant Supreme Court/High Court judgments."
             ),
             ExpertiseDomain.CONTRACT_LAW: (
-                "You are a Contract Law Expert AI specializing in Indian contract law. Think like an experienced contract lawyer. "
-                "Provide thorough contract analysis with references to Indian Contract Act 1872 and related legislation."
+                "You are a Contract Law Expert AI specializing in Indian contract law. Think like an experienced Indian contract lawyer. "
+                "Focus on Indian Contract Act 1872, Indian judicial precedents, and contract enforcement under Indian law. "
+                "Provide thorough contract analysis with references to Indian legislation and relevant case laws."
             ),
             ExpertiseDomain.REGULATORY_COMPLIANCE: (
-                "You are a Regulatory Compliance Expert AI. Think like a senior compliance officer. "
-                "Provide comprehensive compliance analysis with references to applicable regulations and standards."
+                "You are a Regulatory Compliance Expert AI specializing in the Indian regulatory framework. Think like a senior compliance officer in India. "
+                "Focus on Indian regulations including RBI, SEBI, MCA, and other Indian regulatory bodies. "
+                "Provide comprehensive compliance analysis with references to applicable Indian regulations and standards."
             )
         }
         
@@ -489,8 +496,23 @@ class HotSwappableSMEPlugin:
         sources = self._get_source_references()
         base_prompt += f"\n\nReference these authoritative sources: {', '.join(sources)}"
         
-        # Add citation requirement
-        base_prompt += "\n\nCRITICAL: Include proper citations [1], [2], [3] in your response."
+        # Add strict citation and formatting requirements
+        base_prompt += """
+
+CRITICAL FORMATTING REQUIREMENTS:
+1. ALWAYS include citations in [1], [2], [3] format after EVERY claim or fact
+2. Use clear paragraphs with proper line breaks for readability  
+3. Use bullet points for listing items
+4. Bold key terms when important
+5. End your response with a Sources section listing all citations
+6. ALL responses must be focused on INDIA - Indian laws, Indian banks, Indian regulations, Indian market
+
+Example: According to RBI regulations [1], loan approval in Indian banks requires CIBIL score assessment [2]. Key factors include income verification [3] and debt-to-income ratio as per Indian banking norms [1].
+
+Sources:
+[1] Reserve Bank of India (RBI) Guidelines
+[2] CIBIL Credit Information Standards
+[3] Indian Banking Regulations Act"""
         
         return base_prompt
     
@@ -586,18 +608,42 @@ class HotSwappableSMEPlugin:
                 return ExpertiseDomain.FINANCE
     
     def _query_llm(self, prompt: str) -> str:
-        """Query the LLM API directly and simply"""
+        """Query the LLM API with enhanced formatting instructions"""
         try:
             print(f"🔍 Making AI request...")
             
-            # Simple, direct API call
+            # Enhanced prompt with strict formatting requirements
+            enhanced_prompt = f"""{prompt}
+
+MANDATORY RESPONSE FORMAT:
+- Include citations [1], [2], [3] after EVERY factual statement
+- Use proper paragraph structure with line breaks
+- Use bullet points for lists
+- End with Sources section listing all references
+
+Example format:
+The legal principle states that... [1]. In Indian jurisprudence, this is further clarified by... [2].
+
+Key considerations:
+• First consideration with citation [1]
+• Second consideration with citation [3]
+• Third consideration with citation [2]
+
+Sources:
+[1] Source name and details
+[2] Another source reference
+[3] Third source reference
+
+Now respond following this format strictly."""
+            
+            # Direct API call
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
                 json={
                     "model": "anthropic/claude-3-haiku",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 1000,
+                    "messages": [{"role": "user", "content": enhanced_prompt}],
+                    "max_tokens": 1500,
                     "temperature": 0.7
                 },
                 timeout=30
@@ -610,13 +656,11 @@ class HotSwappableSMEPlugin:
                 return answer
             else:
                 print(f"❌ API failed: {response.status_code}")
-                # Return a simple, helpful response instead of error
-                return "I'm here to help with your financial questions. Could you please provide more details about what you'd like to know?"
+                return "I'm here to help. Could you please provide more details about what you'd like to know?"
                 
         except Exception as e:
             print(f"❌ Error: {e}")
-            # Return a helpful fallback response
-            return "I'm ready to assist you with financial advice and analysis. What specific topic would you like help with today?"
+            return "I'm ready to assist you. What specific topic would you like help with today?"
     
     def _extract_citations(self, response: str) -> List[str]:
         """Extract citations from response"""
