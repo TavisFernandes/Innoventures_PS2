@@ -1,11 +1,8 @@
 "use client";
 
-
-
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-
 import { Check, CheckCheck, Copy, Download, Sparkles } from "lucide-react";
-
 import { usePlugin } from "@/context/PluginContext";
 
 import { Bot, User, BookOpen, TrendingUp, Scale, Briefcase, ExternalLink, CheckCircle, AlertCircle, FileText } from "lucide-react";
