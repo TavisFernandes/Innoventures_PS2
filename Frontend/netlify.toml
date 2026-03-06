@@ -1,12 +1,7 @@
 [build]
-  publish = ".next"
+  publish = "out"
   command = "npm run build"
 
 [build.environment]
   NEXT_PUBLIC_API_URL = "https://hackx-2.onrender.com"
   NODE_VERSION = "18"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200

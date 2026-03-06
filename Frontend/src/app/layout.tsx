@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { PluginProvider } from "@/context/PluginContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -21,7 +22,9 @@ export default function RootLayout({
     return (
         <html lang="en" className={inter.variable}>
             <body className="font-sans antialiased">
-                <PluginProvider>{children}</PluginProvider>
+                <AuthProvider>
+                    <PluginProvider>{children}</PluginProvider>
+                </AuthProvider>
             </body>
         </html>
     );

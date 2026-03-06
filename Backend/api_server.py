@@ -12,7 +12,7 @@ import sys
 import os
 from datetime import datetime
 import json
-import requests
+import httpx
 import yaml
 import joblib
 import numpy as np
@@ -370,20 +370,20 @@ async def chat(request: ChatRequest):
         
         print(f"� Using API key: {api_key[:20]}...")
         
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "anthropic/claude-3-haiku",
-                "messages": [{"role": "user", "content": request.message}],
-                "max_tokens": 1000,
-                "temperature": 0.7
-            },
-            timeout=30
-        )
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "anthropic/claude-3-haiku",
+                    "messages": [{"role": "user", "content": request.message}],
+                    "max_tokens": 500,
+                    "temperature": 0.7
+                }
+            )
         
         print(f"📡 API Status: {response.status_code}")
         
@@ -392,16 +392,14 @@ async def chat(request: ChatRequest):
             ai_answer = result['choices'][0]['message']['content']
             print(f"✅ AI Response: {ai_answer[:100]}...")
             
-            # Add timestamp to ensure fresh responses
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            
             return ChatResponse(
-                answer=f"[{timestamp}] {ai_answer}",
+                answer=ai_answer,
                 confidence=0.85,
                 sources=["OpenRouter API"],
                 methodology="Direct AI response",
                 domain="finance",
                 citations=[],
+                reasoning_steps=[],
                 disclaimer="This is an AI-generated response. Please verify important information."
             )
         else:

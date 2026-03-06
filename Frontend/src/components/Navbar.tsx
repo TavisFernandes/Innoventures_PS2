@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlugin } from "@/context/PluginContext";
+import { useAuth } from "@/context/AuthContext";
 import { Menu, X } from "lucide-react";
 
-const NAV_LINKS = ["Chat", "Plugins", "Docs", "Pricing", "Enterprise"];
+const NAV_LINKS = ["Plugins", "Docs", "Pricing", "Enterprise"];
 
 export default function Navbar() {
     const { activePlugin } = usePlugin();
+    const { user, signOut } = useAuth();
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -59,15 +61,26 @@ export default function Navbar() {
 
                 {/* Right CTA */}
                 <div className="hidden md:flex items-center gap-3">
-                    <a
-                        href="/signin"
-                        className="text-white/50 hover:text-white/90 text-[13px] font-medium transition-colors duration-200"
-                    >
-                        Sign In
-                    </a>
-                    <a href="/signup" className="btn-gradient text-[13px] py-2 px-5">
-                        Get Started Free
-                    </a>
+                    {user ? (
+                        <button
+                            onClick={signOut}
+                            className="text-white/50 hover:text-white/90 text-[13px] font-medium transition-colors duration-200"
+                        >
+                            Sign Out
+                        </button>
+                    ) : (
+                        <>
+                            <a
+                                href="/login"
+                                className="text-white/50 hover:text-white/90 text-[13px] font-medium transition-colors duration-200"
+                            >
+                                Sign In
+                            </a>
+                            <a href="/login" className="btn-gradient text-[13px] py-2 px-5">
+                                Get Started Free
+                            </a>
+                        </>
+                    )}
                 </div>
 
                 {/* Mobile Toggle */}
@@ -100,9 +113,25 @@ export default function Navbar() {
                                     {link}
                                 </a>
                             ))}
-                            <button className="btn-gradient text-sm mt-2 w-full">
-                                Get Started Free
-                            </button>
+                            {user ? (
+                                <button 
+                                    onClick={() => {
+                                        signOut();
+                                        setMobileOpen(false);
+                                    }}
+                                    className="text-white/60 hover:text-white text-sm font-medium mt-2"
+                                >
+                                    Sign Out
+                                </button>
+                            ) : (
+                                <a 
+                                    href="/login" 
+                                    className="btn-gradient text-sm mt-2 w-full"
+                                    onClick={() => setMobileOpen(false)}
+                                >
+                                    Get Started Free
+                                </a>
+                            )}
                         </div>
                     </motion.div>
                 )}
