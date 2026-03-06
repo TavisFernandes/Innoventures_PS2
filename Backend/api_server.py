@@ -353,76 +353,61 @@ async def chat(request: ChatRequest):
     """Process a chat message using SME expertise with context"""
     print(f"🔍 Received message: {request.message[:50]}...")
     
-    # Simple direct AI response - no complex logic
+    if not sme_plugin:
+        return ChatResponse(
+            answer="Backend service not properly initialized. Please try again.",
+            confidence=0.0,
+            sources=[],
+            methodology="Error",
+            domain="finance",
+            citations=[],
+            reasoning_steps=[],
+            disclaimer="Server configuration error"
+        )
+    
     try:
-        # Direct OpenRouter API call
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            return ChatResponse(
-                answer="API key not configured. Please check server configuration.",
-                confidence=0.0,
-                sources=[],
-                methodology="Direct API call",
-                domain="finance",
-                citations=[],
-                disclaimer="Server configuration error"
-            )
+        # Step 1: Detect the appropriate domain
+        detected_domain = sme_plugin.detect_domain(request.message)
+        print(f"🎯 Detected domain: {detected_domain.value}")
         
-        print(f"� Using API key: {api_key[:20]}...")
+        # Step 2: Switch plugin to detected domain
+        sme_plugin.domain = detected_domain
         
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "anthropic/claude-3-haiku",
-                    "messages": [{"role": "user", "content": request.message}],
-                    "max_tokens": 500,
-                    "temperature": 0.7
-                }
-            )
+        # Step 3: Process query with full SME capabilities
+        result = sme_plugin.process_query(
+            query=request.message,
+            query_type="general",
+            context=request.context
+        )
         
-        print(f"📡 API Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            result = response.json()
-            ai_answer = result['choices'][0]['message']['content']
-            print(f"✅ AI Response: {ai_answer[:100]}...")
-            
-            return ChatResponse(
-                answer=ai_answer,
-                confidence=0.85,
-                sources=["OpenRouter API"],
-                methodology="Direct AI response",
-                domain="finance",
-                citations=[],
-                reasoning_steps=[],
-                disclaimer="This is an AI-generated response. Please verify important information."
-            )
-        else:
-            print(f"❌ API Error: {response.status_code} - {response.text}")
-            return ChatResponse(
-                answer=f"I'm having trouble connecting to my AI service right now. However, I can still help you with general financial guidance. What specific financial topic would you like to discuss?",
-                confidence=0.5,
-                sources=[],
-                methodology="Fallback response",
-                domain="finance",
-                citations=[],
-                disclaimer="AI service temporarily unavailable"
-            )
+        print(f"✅ Generated response with {len(result.citations)} citations")
+        print(f"📚 Citations: {result.citations}")
+
+        # Return structured response with proper domain and citations
+        return ChatResponse(
+            answer=result.answer,
+            confidence=result.confidence,
+            sources=result.sources,
+            methodology=result.methodology,
+            domain=result.domain.value,
+            citations=result.citations,
+            reasoning_steps=result.reasoning_steps,
+            disclaimer=result.disclaimer
+        )
             
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error processing query: {e}")
+        import traceback
+        traceback.print_exc()
+        
         return ChatResponse(
-            answer=f"I'm experiencing technical difficulties, but I'm here to help. Please try again or let me know what financial topic you'd like to explore.",
+            answer=f"I'm experiencing technical difficulties. Please try rephrasing your question or try again.",
             confidence=0.3,
             sources=[],
             methodology="Error handling",
             domain="finance",
             citations=[],
+            reasoning_steps=[],
             disclaimer="Service temporarily unavailable"
         )
 

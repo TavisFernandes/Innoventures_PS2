@@ -1,0 +1,62 @@
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """Process a chat message using SME expertise with domain detection and citations"""
+    print(f"🔍 Received message: {request.message[:50]}...")
+    
+    if not sme_plugin:
+        return ChatResponse(
+            answer="Backend service not properly initialized. Please try again.",
+            confidence=0.0,
+            sources=[],
+            methodology="Error",
+            domain="finance",
+            citations=[],
+            reasoning_steps=[],
+            disclaimer="Server configuration error"
+        )
+    
+    try:
+        # Step 1: Detect the appropriate domain
+        detected_domain = sme_plugin.detect_domain(request.message)
+        print(f"🎯 Detected domain: {detected_domain.value}")
+        
+        # Step 2: Switch plugin to detected domain
+        sme_plugin.domain = detected_domain
+        
+        # Step 3: Process query with full SME capabilities
+        result = sme_plugin.process_query(
+            query=request.message,
+            query_type="general",
+            context=request.context
+        )
+        
+        print(f"✅ Generated response with {len(result.citations)} citations")
+        print(f"📚 Citations: {result.citations}")
+        
+        # Return structured response with proper domain and citations
+        return ChatResponse(
+            answer=result.answer,
+            confidence=result.confidence,
+            sources=result.sources,
+            methodology=result.methodology,
+            domain=result.domain.value,
+            citations=result.citations,
+            reasoning_steps=result.reasoning_steps,
+            disclaimer=result.disclaimer
+        )
+            
+    except Exception as e:
+        print(f"❌ Error processing query: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return ChatResponse(
+            answer=f"I'm experiencing technical difficulties. Please try rephrasing your question or try again.",
+            confidence=0.3,
+            sources=[],
+            methodology="Error handling",
+            domain="finance",
+            citations=[],
+            reasoning_steps=[],
+            disclaimer="Service temporarily unavailable"
+        )
