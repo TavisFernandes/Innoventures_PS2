@@ -612,19 +612,26 @@ Sources:
         try:
             print(f"🔍 Making AI request...")
             
-            # Get clean domain-specific system prompt (NOT passing prompt as it's not used)
+            # Get clean domain-specific system prompt
             system_prompt = self._create_domain_prompt("")
             
-            # Direct API call with system message and user message separated
+            # Combine system prompt and user query in a single message
+            # (Some APIs don't support separate system role)
+            full_prompt = f"""{system_prompt}
+
+---
+
+User Question: {prompt}
+
+Provide your expert response following all the formatting requirements above."""
+            
+            # Direct API call with single user message
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
                 json={
                     "model": "anthropic/claude-3-haiku",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt}
-                    ],
+                    "messages": [{"role": "user", "content": full_prompt}],
                     "max_tokens": 1500,
                     "temperature": 0.7
                 },
@@ -847,29 +854,8 @@ Sources:
     def _handle_factual_question(self, query: str, query_type: str, context: str = "") -> SMEResponse:
         """Handle factual questions with comprehensive expert response"""
         
-        # Create comprehensive prompt
-        prompt = f"""{query}
-
-        Provide a comprehensive, detailed response that:
-        1. Demonstrates deep domain expertise
-        2. Includes specific examples and applications
-        3. References authoritative sources
-        4. Follows structured reasoning
-        5. Provides actionable insights
-        6. If appropriate, asks follow-up questions for deeper understanding
-
-        CRITICAL SAFETY INSTRUCTIONS:
-        - DO NOT hallucinate facts, figures, or data
-        - ONLY provide information you are confident about
-        - If uncertain about specific details, clearly state limitations
-        - Cite sources when making claims
-        - Avoid making up statistics or specific numbers
-
-        Query Type: {query_type}
-        Domain: {self.domain.value}"""
-        
-        # Get LLM response
-        llm_response = self._query_llm(prompt)
+        # Pass only the actual query to LLM - system prompt has all instructions
+        llm_response = self._query_llm(query)
         
         # Extract citations
         citations = self._extract_citations(llm_response)
