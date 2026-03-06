@@ -146,73 +146,60 @@ const getDomainColor = (domain?: string, accent?: string) => {
 
 
 const formatMessage = (text: string) => {
-
     // Convert markdown-like formatting to HTML
-
     if (!text || typeof text !== 'string') {
-
         return '';
-
     }
-
     
-
     let formatted = text;
-
     
-
+    // Code blocks ```code```
+    formatted = formatted.replace(/```([^`]+)```/g, '<pre class="bg-black/30 p-3 rounded-lg my-2 overflow-x-auto"><code class="text-sm text-purple-300">$1</code></pre>');
+    
+    // Inline code `code`
+    formatted = formatted.replace(/`([^`]+)`/g, '<code class="bg-black/20 px-1.5 py-0.5 rounded text-sm text-purple-200">$1</code>');
+    
     // Bold text **text**
-
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
     
-
     // Italic text *text*
-
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic text-white/90">$1</em>');
     
-
     // Headers ### Header
-
-    formatted = formatted.replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-white/80">$1</h3>');
-
+    formatted = formatted.replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-white/90 border-b border-white/10 pb-1">$1</h3>');
     
-
     // Headers ## Header
-
-    formatted = formatted.replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mt-4 mb-2 text-white/90">$1</h2>');
-
+    formatted = formatted.replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mt-4 mb-2 text-white border-b border-white/20 pb-1">$1</h2>');
     
-
     // Headers # Header
-
-    formatted = formatted.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-3 text-white">$1</h1>');
-
+    formatted = formatted.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-3 text-white border-b border-white/30 pb-2">$1</h1>');
     
-
-    // Bullet points - item or * item
-
-    formatted = formatted.replace(/^[\-\*]\s+(.*$)/gm, '<li class="ml-4 mb-1 text-white/70">• $1</li>');
-
+    // Section dividers (Sources:, Key Points:, etc.)
+    formatted = formatted.replace(/^(Sources|Key Points|Important|Note|Summary|Conclusion|References):/gm, '<div class="mt-4 mb-2 pt-3 border-t border-purple-500/30"><strong class="text-purple-300 text-sm uppercase tracking-wide">$1:</strong></div>');
     
-
-    // Numbered lists 1. item
-
-    formatted = formatted.replace(/^\d+\.\s+(.*$)/gm, '<li class="ml-4 mb-1 text-white/70">$1</li>');
-
+    // Bullet points - item or * item (collect first)
+    const bulletPoints = formatted.match(/^[\-\*]\s+.+$/gm);
+    if (bulletPoints && bulletPoints.length > 0) {
+        const bulletList = bulletPoints.map(item => 
+            item.replace(/^[\-\*]\s+(.+)$/, '<li class="mb-1.5 text-white/80 leading-relaxed">• $1</li>')
+        ).join('');
+        formatted = formatted.replace(/(?:^[\-\*]\s+.+$\n?)+/gm, `<ul class="ml-4 my-3 space-y-1">${bulletList}</ul>`);
+    }
     
-
+    // Numbered lists 1. item (collect first)
+    const numberedPoints = formatted.match(/^\d+\.\s+.+$/gm);
+    if (numberedPoints && numberedPoints.length > 0) {
+        const numberedList = numberedPoints.map((item, idx) => 
+            item.replace(/^\d+\.\s+(.+)$/, `<li class="mb-1.5 text-white/80 leading-relaxed">${idx + 1}. $1</li>`)
+        ).join('');
+        formatted = formatted.replace(/(?:^\d+\.\s+.+$\n?)+/gm, `<ol class="ml-4 my-3 space-y-1">${numberedList}</ol>`);
+    }
+    
     // Line breaks
-
     formatted = formatted.replace(/\n\n/g, '<br /><br />');
-
     formatted = formatted.replace(/\n/g, '<br />');
-
     
-
     return formatted;
-
 };
 
 
