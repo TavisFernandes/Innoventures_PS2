@@ -362,29 +362,29 @@ async def chat_options():
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Process a chat message using SME expertise with context"""
-    print(f"🔍 Received message: {request.message[:100]}...")
-    
-    # Clean up repeated content
-    cleaned_message = request.message
-    if cleaned_message.count("Citizenship: The person must be a citizen of India") > 1:
-        # Remove repetitions - keep only first occurrence
-        lines = cleaned_message.split('\n')
-        seen_lines = set()
-        unique_lines = []
-        for line in lines:
-            if line.strip() and line.strip() not in seen_lines:
-                seen_lines.add(line.strip())
-                unique_lines.append(line)
-            elif not line.strip():  # Keep empty lines
-                unique_lines.append(line)
-        cleaned_message = '\n'.join(unique_lines)
-        print(f"🧹 Cleaned message from {len(request.message)} to {len(cleaned_message)} chars")
-    
-    # Simple direct AI response - no complex logic
     try:
+        print(f"🔍 Received message: {request.message[:100]}...")
+        
+        # Clean up repeated content
+        cleaned_message = request.message
+        if cleaned_message.count("Citizenship: The person must be a citizen of India") > 1:
+            # Remove repetitions - keep only first occurrence
+            lines = cleaned_message.split('\n')
+            seen_lines = set()
+            unique_lines = []
+            for line in lines:
+                if line.strip() and line.strip() not in seen_lines:
+                    seen_lines.add(line.strip())
+                    unique_lines.append(line)
+                elif not line.strip():  # Keep empty lines
+                    unique_lines.append(line)
+            cleaned_message = '\n'.join(unique_lines)
+            print(f"🧹 Cleaned message from {len(request.message)} to {len(cleaned_message)} chars")
+        
         # Direct OpenRouter API call
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
+            print("❌ No API key found")
             response_data = ChatResponse(
                 answer="API key not configured. Please check server configuration.",
                 confidence=0.0,
@@ -465,7 +465,11 @@ async def chat(request: ChatRequest):
             )
             
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Chat endpoint error: {str(e)}")
+        print(f"❌ Error type: {type(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        
         response_data = ChatResponse(
             answer=f"I'm experiencing technical difficulties, but I'm here to help. Please try again or let me know what topic you'd like to explore.",
             confidence=0.3,
