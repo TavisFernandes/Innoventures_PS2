@@ -478,29 +478,28 @@ async def chat(request: ChatRequest):
         answer = result.answer
         print(f"🔍 Original answer length: {len(answer)} chars")
         
-        # Track seen numbered items and content blocks
-        seen_items = set()
-        lines = answer.split('\n')
-        unique_lines = []
+        # Split by section headers and track content
+        import re
+        sections = re.split(r'\n(?=[A-Z][a-z]+:)', answer)  # Split on section headers
         
-        for line in lines:
-            # Normalize for comparison
-            normalized = ' '.join(line.lower().strip().split())
+        seen_content = set()
+        unique_sections = []
+        
+        for section in sections:
+            # Extract just the content (remove section header for comparison)
+            content_lines = [line for line in section.split('\n') if line.strip() and not line.strip().endswith(':')]
+            content_normalized = ' '.join(' '.join(line.lower().split()) for line in content_lines)
             
-            # Skip empty or very short lines
-            if len(normalized) < 5:
-                unique_lines.append(line)
+            # Skip if we've seen this content before
+            if content_normalized and content_normalized in seen_content:
+                print(f"⚠️ Skipping duplicate section: {section[:50]}...")
                 continue
             
-            # Check if this exact content was seen before
-            if normalized in seen_items:
-                print(f"⚠️ Skipping duplicate: {line[:60]}...")
-                continue
-            
-            seen_items.add(normalized)
-            unique_lines.append(line)
+            if content_normalized:
+                seen_content.add(content_normalized)
+            unique_sections.append(section)
         
-        result.answer = '\n'.join(unique_lines)
+        result.answer = '\n'.join(unique_sections)
         
         # Step 4: Add citations section if not present
         if result.citations and '[1]' not in result.answer:
@@ -509,7 +508,7 @@ async def chat(request: ChatRequest):
                 citations_text += f'[{i}] {citation}\n'
             result.answer += citations_text
         
-        print(f"🔍 Final answer length: {len(result.answer)} chars, removed {len(lines) - len(unique_lines)} duplicates")
+        print(f"🔍 Final answer length: {len(result.answer)} chars, removed {len(sections) - len(unique_sections)} duplicate sections")
         
         print(f"✅ Generated response with {len(result.citations)} citations")
         print(f"📚 Citations: {result.citations}")
