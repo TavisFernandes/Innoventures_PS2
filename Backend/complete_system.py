@@ -583,18 +583,28 @@ class HotSwappableSMEPlugin:
                 result = response.json()
                 answer = result['choices'][0]['message']['content']
                 
-                # Remove duplicate blocks (paragraphs)
-                paragraphs = answer.split('\n\n')
-                seen = set()
-                unique_paragraphs = []
-                for para in paragraphs:
-                    para_clean = para.strip()
-                    if para_clean and para_clean not in seen:
-                        seen.add(para_clean)
-                        unique_paragraphs.append(para)
+                # AGGRESSIVE deduplication - remove ANY repeated content
+                import re
                 
-                answer = '\n\n'.join(unique_paragraphs)
-                print(f"✅ AI responded successfully")
+                # Split by numbered points (1., 2., etc.)
+                sections = re.split(r'(\d+\.\s+)', answer)
+                
+                seen_content = set()
+                final_parts = []
+                
+                for i in range(len(sections)):
+                    if i % 2 == 0:  # Content part
+                        content = sections[i].strip()
+                        if content and content not in seen_content:
+                            if i > 0:  # Add the number prefix
+                                final_parts.append(sections[i-1])
+                            final_parts.append(content)
+                            seen_content.add(content)
+                    elif i == 0:  # First part before any numbering
+                        final_parts.append(sections[i])
+                
+                answer = ''.join(final_parts)
+                print(f"✅ AI responded (deduplicated)")
                 return answer
             else:
                 print(f"❌ API failed: {response.status_code}")
