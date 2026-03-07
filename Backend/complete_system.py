@@ -582,6 +582,20 @@ class HotSwappableSMEPlugin:
             if response.status_code == 200:
                 result = response.json()
                 answer = result['choices'][0]['message']['content']
+                
+                # Remove duplicate paragraphs/sections
+                lines = answer.split('\n')
+                seen = set()
+                unique_lines = []
+                for line in lines:
+                    line_clean = line.strip()
+                    if line_clean and line_clean not in seen:
+                        seen.add(line_clean)
+                        unique_lines.append(line)
+                    elif not line_clean:  # Keep empty lines
+                        unique_lines.append(line)
+                
+                answer = '\n'.join(unique_lines)
                 print(f"✅ AI responded successfully")
                 return answer
             else:
