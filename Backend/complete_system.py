@@ -557,17 +557,23 @@ class HotSwappableSMEPlugin:
             # Get minimal domain role
             role = self._create_domain_prompt("")
             
-            # Ultra-explicit format instruction
+            # Simplified approach with system message
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
                 json={
                     "model": "anthropic/claude-3-haiku",
-                    "messages": [{
-                        "role": "user", 
-                        "content": f"{role}\n\nFORMAT RULE: When listing points, write each point ONCE with its full explanation immediately below. NEVER repeat the list of points between explanations.\n\nCorrect format:\n1. Point A: [full explanation]\n2. Point B: [full explanation]\n\nWRONG format (DO NOT DO THIS):\n1. Point A\n2. Point B\n[explanation A]\n1. Point A\n2. Point B\n[explanation B]\n\n{prompt}"
-                    }],
-                    "max_tokens": 2500,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": f"{role} Provide comprehensive answers with detailed explanations. Write each point once with its full explanation before moving to the next point."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "max_tokens": 3000,
                     "temperature": 0.3
                 },
                 timeout=30
