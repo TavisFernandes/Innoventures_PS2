@@ -476,35 +476,31 @@ async def chat(request: ChatRequest):
         
         # CRITICAL: Remove duplicates at API level as final safeguard
         import re
+        import hashlib
         answer = result.answer
         
         print(f"🔍 Original answer length: {len(answer)} chars")
         
-        # Split by numbered points and keep only first occurrence
-        parts = re.split(r'\n(?=\d+\.\s)', '\n' + answer)
-        print(f"🔍 Split into {len(parts)} parts")
+        # Split by double newlines to get paragraphs
+        paragraphs = answer.split('\n\n')
+        print(f"🔍 Split into {len(paragraphs)} paragraphs")
         
-        seen_nums = set()
-        unique_parts = []
+        seen_hashes = set()
+        unique_paragraphs = []
         
-        for part in parts:
-            if not part.strip():
-                continue
-            match = re.match(r'(\d+)\.\s', part)
-            if match:
-                num = match.group(1)
-                if num not in seen_nums:
-                    seen_nums.add(num)
-                    unique_parts.append(part)
-                else:
-                    print(f"⚠️ Removing duplicate: {num}. {part[:50]}...")
+        for para in paragraphs:
+            # Create hash of normalized content
+            normalized = ' '.join(para.split())
+            para_hash = hashlib.md5(normalized.encode()).hexdigest()
+            
+            if para_hash not in seen_hashes:
+                seen_hashes.add(para_hash)
+                unique_paragraphs.append(para)
             else:
-                # Only add non-numbered parts if they're at the beginning
-                if len(unique_parts) == 0:
-                    unique_parts.append(part)
+                print(f"⚠️ Removing duplicate paragraph: {para[:50]}...")
         
-        result.answer = '\n'.join(unique_parts).strip()
-        print(f"🔍 Final answer length: {len(result.answer)} chars, removed {len(parts) - len(unique_parts)} duplicates")
+        result.answer = '\n\n'.join(unique_paragraphs)
+        print(f"🔍 Final answer length: {len(result.answer)} chars, removed {len(paragraphs) - len(unique_paragraphs)} duplicates")
         
         print(f"✅ Generated response with {len(result.citations)} citations")
         print(f"📚 Citations: {result.citations}")
