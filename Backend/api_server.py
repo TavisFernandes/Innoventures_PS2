@@ -252,7 +252,6 @@ async def startup_event():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    print(f"Health check accessed from: {request.headers.get('origin', 'unknown')}")
     return {
         "status": "healthy",
         "plugin": "SME Plugin API",
