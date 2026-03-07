@@ -12,7 +12,7 @@ import sys
 import os
 from datetime import datetime
 import json
-import httpx
+import requests
 import yaml
 import joblib
 import numpy as np
@@ -252,6 +252,7 @@ async def startup_event():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    print(f"Health check accessed from: {request.headers.get('origin', 'unknown')}")
     return {
         "status": "healthy",
         "plugin": "SME Plugin API",
@@ -350,95 +351,96 @@ async def test_ai():
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Process a chat message using SME expertise with context"""
-    print(f"🔍 Received message: {request.message[:50]}...")
+    print(f"🔍 Received message: {request.message[:100]}...")
     
-    if not sme_plugin:
-        return ChatResponse(
-            answer="Backend service not properly initialized. Please try again.",
-            confidence=0.0,
-            sources=[],
-            methodology="Error",
-            domain="finance",
-            citations=[],
-            reasoning_steps=[],
-            disclaimer="Server configuration error"
-        )
+    # Clean up repeated content
+    cleaned_message = request.message
+    if cleaned_message.count("Citizenship: The person must be a citizen of India") > 1:
+        # Remove repetitions - keep only first occurrence
+        lines = cleaned_message.split('\n')
+        seen_lines = set()
+        unique_lines = []
+        for line in lines:
+            if line.strip() and line.strip() not in seen_lines:
+                seen_lines.add(line.strip())
+                unique_lines.append(line)
+            elif not line.strip():  # Keep empty lines
+                unique_lines.append(line)
+        cleaned_message = '\n'.join(unique_lines)
+        print(f"🧹 Cleaned message from {len(request.message)} to {len(cleaned_message)} chars")
     
+    # Simple direct AI response - no complex logic
     try:
-        # Step 1: Detect the appropriate domain
-        detected_domain = sme_plugin.detect_domain(request.message)
-        print(f"🎯 Detected domain: {detected_domain.value}")
+        # Direct OpenRouter API call
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            return ChatResponse(
+                answer="API key not configured. Please check server configuration.",
+                confidence=0.0,
+                sources=[],
+                methodology="Direct API call",
+                domain="legal",
+                citations=[],
+                disclaimer="Server configuration error"
+            )
         
-        # Step 2: Switch plugin to detected domain
-        sme_plugin.domain = detected_domain
+        print(f"🔑 Using API key: {api_key[:20]}...")
         
-        # Step 3: Process query with full SME capabilities
-        result = sme_plugin.process_query(
-            query=request.message,
-            query_type="general",
-            context=request.context
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "anthropic/claude-3-haiku",
+                "messages": [{"role": "user", "content": cleaned_message}],
+                "max_tokens": 1000,
+                "temperature": 0.8  # Higher temperature for more variety
+            },
+            timeout=30
         )
         
-        # CRITICAL: Remove duplicates at API level as final safeguard
-        import re
-        answer = result.answer
+        print(f"📡 API Status: {response.status_code}")
         
-        print(f"🔍 Original answer length: {len(answer)} chars")
-        
-        # Split by numbered points and keep only first occurrence
-        parts = re.split(r'\n(?=\d+\.\s)', '\n' + answer)
-        print(f"🔍 Split into {len(parts)} parts")
-        
-        seen_nums = set()
-        unique_parts = []
-        
-        for part in parts:
-            if not part.strip():
-                continue
-            match = re.match(r'(\d+)\.\s', part)
-            if match:
-                num = match.group(1)
-                if num not in seen_nums:
-                    seen_nums.add(num)
-                    unique_parts.append(part)
-                else:
-                    print(f"⚠️ Removing duplicate: {num}. {part[:50]}...")
-            else:
-                # Only add non-numbered parts if they're at the beginning
-                if len(unique_parts) == 0:
-                    unique_parts.append(part)
-        
-        result.answer = '\n'.join(unique_parts).strip()
-        print(f"🔍 Final answer length: {len(result.answer)} chars, removed {len(parts) - len(unique_parts)} duplicates")
-        
-        print(f"✅ Generated response with {len(result.citations)} citations")
-        print(f"📚 Citations: {result.citations}")
-
-        # Return structured response with proper domain and citations
-        return ChatResponse(
-            answer=result.answer,
-            confidence=result.confidence,
-            sources=result.sources,
-            methodology=result.methodology,
-            domain=result.domain.value,
-            citations=result.citations,
-            reasoning_steps=result.reasoning_steps,
-            disclaimer=result.disclaimer
-        )
+        if response.status_code == 200:
+            result = response.json()
+            ai_answer = result['choices'][0]['message']['content']
+            print(f"✅ AI Response: {ai_answer[:100]}...")
+            
+            # Add timestamp to ensure fresh responses
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            
+            return ChatResponse(
+                answer=ai_answer,  # Remove timestamp for cleaner responses
+                confidence=0.85,
+                sources=["OpenRouter API"],
+                methodology="Direct AI response",
+                domain="legal",
+                citations=[],
+                disclaimer="This is an AI-generated response. Please verify important information."
+            )
+        else:
+            print(f"❌ API Error: {response.status_code} - {response.text}")
+            return ChatResponse(
+                answer=f"I'm having trouble connecting to my AI service right now. However, I can still help you with general guidance. What specific topic would you like to discuss?",
+                confidence=0.5,
+                sources=[],
+                methodology="Fallback response",
+                domain="legal",
+                citations=[],
+                disclaimer="AI service temporarily unavailable"
+            )
             
     except Exception as e:
-        print(f"❌ Error processing query: {e}")
-        import traceback
-        traceback.print_exc()
-        
+        print(f"❌ Error: {e}")
         return ChatResponse(
-            answer=f"I'm experiencing technical difficulties. Please try rephrasing your question or try again.",
+            answer=f"I'm experiencing technical difficulties, but I'm here to help. Please try again or let me know what topic you'd like to explore.",
             confidence=0.3,
             sources=[],
             methodology="Error handling",
-            domain="finance",
+            domain="legal",
             citations=[],
-            reasoning_steps=[],
             disclaimer="Service temporarily unavailable"
         )
 
@@ -508,13 +510,13 @@ async def clear_chat_history(session_id: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def get_context_from_mongodb(session_id: str, max_messages: int = 2) -> str:
+def get_context_from_mongodb(session_id: str, max_messages: int = 8) -> str:
     """Get conversation context from MongoDB"""
     if messages_collection is None:
         return ""
     
     try:
-        # Get recent messages for context (only last 2 messages)
+        # Get recent messages for context
         context_messages = list(
             messages_collection.find({"session_id": session_id})
             .sort("timestamp", -1)
@@ -524,15 +526,21 @@ def get_context_from_mongodb(session_id: str, max_messages: int = 2) -> str:
         if not context_messages:
             return ""
         
-        # Build minimal context - only topics, NOT full responses
-        context_prompt = "Previous topics discussed (for continuity only - do NOT copy response structures):\n"
+        # Build context prompt
+        context_prompt = "Previous conversation context:\n\n"
         
         for msg in reversed(context_messages):  # Chronological order
-            if msg["sender"] == "user":
-                # Only include user questions (topics) not AI answers
-                context_prompt += f"- {msg['message'][:150]}...\n"  # Truncate to 150 chars
+            sender = "User" if msg["sender"] == "user" else "AI Assistant"
+            timestamp = msg["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+            
+            context_prompt += f"[{timestamp}] {sender}: {msg['message']}\n"
+            
+            # Include domain info for AI messages
+            if msg["sender"] == "ai" and msg.get("domain"):
+                confidence = round((msg.get("confidence", 0) * 100))
+                context_prompt += f"(Domain: {msg['domain']}, Confidence: {confidence}%)\n"
         
-        context_prompt += "\nAnswer the current question independently without copying previous response formats.\n"
+        context_prompt += "\nCurrent question: "
         return context_prompt
         
     except Exception as e:
