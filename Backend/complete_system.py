@@ -566,7 +566,7 @@ class HotSwappableSMEPlugin:
                     "messages": [
                         {
                             "role": "system",
-                            "content": f"{role} Answer thoroughly with detailed explanations. Use clear structure but do not repeat section headers."
+                            "content": f"{role} Answer thoroughly with detailed explanations."
                         },
                         {
                             "role": "user",
@@ -583,28 +583,25 @@ class HotSwappableSMEPlugin:
                 result = response.json()
                 answer = result['choices'][0]['message']['content'].strip()
                 
-                # Aggressive deduplication: detect repeating numbered list patterns
+                # NUCLEAR DEDUPLICATION: Find where "1. " appears second time and cut there
                 lines = answer.split('\n')
+                first_one_idx = None
                 
-                # Find all lines that match "1. " pattern (start of numbered lists)
-                list_starts = []
                 for i, line in enumerate(lines):
-                    if re.match(r'^\d+\.\s+[A-Z]', line.strip()):
-                        list_starts.append((i, line.strip()))
-                
-                # If we find the same pattern appearing multiple times, truncate after first complete cycle
-                if len(list_starts) >= 2:
-                    first_pattern = list_starts[0][1]
-                    for i, (line_idx, pattern) in enumerate(list_starts[1:], 1):
-                        # If we see "1. " again (start of list), we're repeating
-                        if pattern.startswith('1. '):
-                            print(f"⚠️ Detected list repetition at line {line_idx}, truncating")
-                            # Keep everything before this repetition
-                            lines = lines[:line_idx]
+                    stripped = line.strip()
+                    # Check if line starts with "1. " (beginning of numbered list)
+                    if stripped.startswith('1. ') and len(stripped) > 3:
+                        if first_one_idx is None:
+                            first_one_idx = i
+                            print(f"✓ First '1. ' found at line {i}")
+                        else:
+                            # Found second occurrence of "1. " - this is the repetition!
+                            print(f"⚠️ DUPLICATION DETECTED: Second '1. ' at line {i}, truncating")
+                            # Keep only content before this line
+                            answer = '\n'.join(lines[:i]).strip()
                             break
                 
-                answer = '\n'.join(lines).strip()
-                print(f"✅ AI responded (deduplicated)")
+                print(f"✅ AI responded (checked for duplication)")
                 return answer
             else:
                 print(f"❌ API failed: {response.status_code}")
