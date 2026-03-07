@@ -552,7 +552,7 @@ class HotSwappableSMEPlugin:
     def _query_llm(self, prompt: str) -> str:
         """Query the LLM API with domain-specific system prompt"""
         try:
-            print(f"🔍 Making AI request...")
+            logger.info(f"🔍 Making AI request...")
             
             # Get minimal domain role
             role = self._create_domain_prompt("")
@@ -583,7 +583,7 @@ class HotSwappableSMEPlugin:
                 result = response.json()
                 answer = result['choices'][0]['message']['content'].strip()
                 
-                print(f"📝 Raw response length: {len(answer)} chars")
+                logger.info(f"📝 Raw response length: {len(answer)} chars")
                 
                 # Advanced deduplication: detect repeating header patterns
                 lines = answer.split('\n')
@@ -599,7 +599,7 @@ class HotSwappableSMEPlugin:
                 
                 if len(header_lines) >= 3:
                     header_signature = '|||'.join(header_lines[:3])
-                    print(f"🔍 Header signature: {header_signature[:100]}")
+                    logger.info(f"🔍 Header signature: {header_signature[:100]}")
                     
                     # Search for this pattern appearing again later
                     for i in range(10, len(lines)):  # Start checking after line 10
@@ -611,20 +611,20 @@ class HotSwappableSMEPlugin:
                                     match_count += 1
                             
                             if match_count >= 2:  # At least 2 headers match
-                                print(f"⚠️ PATTERN REPETITION detected at line {i}")
-                                print(f"   Matching: {lines[i].strip()[:50]}")
+                                logger.warning(f"⚠️ PATTERN REPETITION detected at line {i}")
+                                logger.info(f"   Matching: {lines[i].strip()[:50]}")
                                 answer = '\n'.join(lines[:i]).strip()
-                                print(f"✂️ Truncated from {len(lines)} to {i} lines")
+                                logger.info(f"✂️ Truncated from {len(lines)} to {i} lines")
                                 break
                 
-                print(f"✅ Final response length: {len(answer)} chars")
+                logger.info(f"✅ Final response length: {len(answer)} chars")
                 return answer
             else:
-                print(f"❌ API failed: {response.status_code}")
+                logger.error(f"❌ API failed: {response.status_code}")
                 return "I'm here to help. Could you please provide more details about what you'd like to know?"
                 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            logger.error(f"❌ Error in _query_llm: {e}", exc_info=True)
             return "I'm ready to assist you. What specific topic would you like help with today?"
     
     def _extract_citations(self, response: str) -> List[str]:
