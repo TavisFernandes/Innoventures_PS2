@@ -477,13 +477,13 @@ async def clear_chat_history(session_id: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-def get_context_from_mongodb(session_id: str, max_messages: int = 8) -> str:
+def get_context_from_mongodb(session_id: str, max_messages: int = 2) -> str:
     """Get conversation context from MongoDB"""
     if messages_collection is None:
         return ""
     
     try:
-        # Get recent messages for context
+        # Get recent messages for context (only last 2 messages)
         context_messages = list(
             messages_collection.find({"session_id": session_id})
             .sort("timestamp", -1)
@@ -493,21 +493,15 @@ def get_context_from_mongodb(session_id: str, max_messages: int = 8) -> str:
         if not context_messages:
             return ""
         
-        # Build context prompt
-        context_prompt = "Previous conversation context:\n\n"
+        # Build minimal context - only topics, NOT full responses
+        context_prompt = "Previous topics discussed (for continuity only - do NOT copy response structures):\n"
         
         for msg in reversed(context_messages):  # Chronological order
-            sender = "User" if msg["sender"] == "user" else "AI Assistant"
-            timestamp = msg["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
-            
-            context_prompt += f"[{timestamp}] {sender}: {msg['message']}\n"
-            
-            # Include domain info for AI messages
-            if msg["sender"] == "ai" and msg.get("domain"):
-                confidence = round((msg.get("confidence", 0) * 100))
-                context_prompt += f"(Domain: {msg['domain']}, Confidence: {confidence}%)\n"
+            if msg["sender"] == "user":
+                # Only include user questions (topics) not AI answers
+                context_prompt += f"- {msg['message'][:150]}...\n"  # Truncate to 150 chars
         
-        context_prompt += "\nCurrent question: "
+        context_prompt += "\nAnswer the current question independently without copying previous response formats.\n"
         return context_prompt
         
     except Exception as e:
