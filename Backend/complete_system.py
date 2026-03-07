@@ -566,14 +566,14 @@ class HotSwappableSMEPlugin:
                     "messages": [
                         {
                             "role": "system",
-                            "content": f"{role} Write response ONCE. List each point with number, dash, description. Add [1][2][3] citations. Example: 1. Topic - Description [1]. NO REPETITION."
+                            "content": f"{role} Provide detailed explanations for each point. Include definition, characteristics, and examples. Add citations [1][2][3]. Write each point ONCE only."
                         },
                         {
                             "role": "user",
                             "content": prompt
                         }
                     ],
-                    "max_tokens": 600,
+                    "max_tokens": 1200,
                     "temperature": 0.2
                 },
                 timeout=30
@@ -583,29 +583,25 @@ class HotSwappableSMEPlugin:
                 result = response.json()
                 answer = result['choices'][0]['message']['content']
                 
-                # AGGRESSIVE deduplication - remove ANY repeated content
-                import re
+                # CRITICAL: Remove ALL duplicate blocks
+                import hashlib
                 
-                # Split by numbered points (1., 2., etc.)
-                sections = re.split(r'(\d+\.\s+)', answer)
+                # Split into sections by double newline
+                sections = answer.split('\n\n')
+                seen_hashes = set()
+                unique_sections = []
                 
-                seen_content = set()
-                final_parts = []
+                for section in sections:
+                    # Create hash of normalized content (ignore whitespace differences)
+                    normalized = ' '.join(section.split())
+                    section_hash = hashlib.md5(normalized.encode()).hexdigest()
+                    
+                    if section_hash not in seen_hashes:
+                        seen_hashes.add(section_hash)
+                        unique_sections.append(section)
                 
-                for i in range(len(sections)):
-                    if i % 2 == 0:  # Content part
-                        content = sections[i].strip()
-                        if content and content not in seen_content:
-                            if i > 0:  # Add the number prefix with proper formatting
-                                final_parts.append('\n\n' + sections[i-1])
-                            final_parts.append(content)
-                            seen_content.add(content)
-                    elif i == 0:  # First part before any numbering
-                        if sections[i].strip():
-                            final_parts.append(sections[i].strip())
-                
-                answer = ''.join(final_parts)
-                print(f"✅ AI responded (deduplicated)")
+                answer = '\n\n'.join(unique_sections)
+                print(f"✅ AI responded (removed {len(sections) - len(unique_sections)} duplicates)")
                 return answer
             else:
                 print(f"❌ API failed: {response.status_code}")
