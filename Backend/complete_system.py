@@ -557,7 +557,7 @@ class HotSwappableSMEPlugin:
             # Get minimal domain role
             role = self._create_domain_prompt("")
             
-            # Single-shot request with high token limit to prevent cutoff loops
+            # Direct, simple instruction
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
@@ -566,7 +566,7 @@ class HotSwappableSMEPlugin:
                     "messages": [
                         {
                             "role": "system",
-                            "content": f"{role} Provide comprehensive answers with detailed explanations. Write naturally without repetition."
+                            "content": f"{role} Answer thoroughly with detailed explanations. Use clear structure but do not repeat section headers."
                         },
                         {
                             "role": "user",
@@ -574,8 +574,7 @@ class HotSwappableSMEPlugin:
                         }
                     ],
                     "max_tokens": 4000,
-                    "temperature": 0.2,
-                    "stop": ["</response>", "\n\n---\n\n"]
+                    "temperature": 0.2
                 },
                 timeout=30
             )
@@ -584,33 +583,27 @@ class HotSwappableSMEPlugin:
                 result = response.json()
                 answer = result['choices'][0]['message']['content'].strip()
                 
-                # Post-process: detect and remove duplicate blocks
-                # If content repeats after a blank line, truncate
+                # Aggressive deduplication: detect repeating numbered list patterns
                 lines = answer.split('\n')
-                deduped_lines = []
-                seen_blocks = set()
-                current_block = []
                 
-                for line in lines:
-                    if line.strip() == '':
-                        # End of block
-                        if current_block:
-                            block_text = ' '.join(current_block)
-                            if block_text not in seen_blocks:
-                                seen_blocks.add(block_text)
-                                deduped_lines.extend(current_block)
-                                deduped_lines.append('')
-                            current_block = []
-                    else:
-                        current_block.append(line)
+                # Find all lines that match "1. " pattern (start of numbered lists)
+                list_starts = []
+                for i, line in enumerate(lines):
+                    if re.match(r'^\d+\.\s+[A-Z]', line.strip()):
+                        list_starts.append((i, line.strip()))
                 
-                # Add final block
-                if current_block:
-                    block_text = ' '.join(current_block)
-                    if block_text not in seen_blocks:
-                        deduped_lines.extend(current_block)
+                # If we find the same pattern appearing multiple times, truncate after first complete cycle
+                if len(list_starts) >= 2:
+                    first_pattern = list_starts[0][1]
+                    for i, (line_idx, pattern) in enumerate(list_starts[1:], 1):
+                        # If we see "1. " again (start of list), we're repeating
+                        if pattern.startswith('1. '):
+                            print(f"⚠️ Detected list repetition at line {line_idx}, truncating")
+                            # Keep everything before this repetition
+                            lines = lines[:line_idx]
+                            break
                 
-                answer = '\n'.join(deduped_lines).strip()
+                answer = '\n'.join(lines).strip()
                 print(f"✅ AI responded (deduplicated)")
                 return answer
             else:
