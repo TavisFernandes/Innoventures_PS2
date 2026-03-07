@@ -583,19 +583,17 @@ class HotSwappableSMEPlugin:
                 result = response.json()
                 answer = result['choices'][0]['message']['content']
                 
-                # Remove duplicate paragraphs/sections
-                lines = answer.split('\n')
+                # Remove duplicate blocks (paragraphs)
+                paragraphs = answer.split('\n\n')
                 seen = set()
-                unique_lines = []
-                for line in lines:
-                    line_clean = line.strip()
-                    if line_clean and line_clean not in seen:
-                        seen.add(line_clean)
-                        unique_lines.append(line)
-                    elif not line_clean:  # Keep empty lines
-                        unique_lines.append(line)
+                unique_paragraphs = []
+                for para in paragraphs:
+                    para_clean = para.strip()
+                    if para_clean and para_clean not in seen:
+                        seen.add(para_clean)
+                        unique_paragraphs.append(para)
                 
-                answer = '\n'.join(unique_lines)
+                answer = '\n\n'.join(unique_paragraphs)
                 print(f"✅ AI responded successfully")
                 return answer
             else:
