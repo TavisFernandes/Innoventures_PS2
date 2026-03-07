@@ -566,14 +566,14 @@ class HotSwappableSMEPlugin:
                     "messages": [
                         {
                             "role": "system",
-                            "content": f"{role} You are an expert in INDIAN LAW. Provide detailed explanations for each point with Indian legal context, statutes, and case law. Include definition, characteristics, and Indian examples. Add citations to Indian laws [1][2][3]. Write complete response in ONE block - do NOT repeat any content."
+                            "content": f"{role} You are an expert in INDIAN LAW. List each point ONCE with brief explanation and citation. Format: 1. Title - Brief description [1]. Stop after listing all unique points. DO NOT REPEAT."
                         },
                         {
                             "role": "user",
                             "content": prompt
                         }
                     ],
-                    "max_tokens": 1200,
+                    "max_tokens": 400,
                     "temperature": 0.2
                 },
                 timeout=30
