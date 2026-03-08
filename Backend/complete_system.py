@@ -847,24 +847,14 @@ class HotSwappableSMEPlugin:
     def _handle_factual_question(self, query: str, query_type: str, context: str = "") -> SMEResponse:
         """Handle factual questions with comprehensive expert response"""
         
-        # Create comprehensive prompt
+        # Create streamlined prompt
         prompt = f"""{query}
 
-        Provide a comprehensive, detailed response that:
-        1. Demonstrates deep domain expertise
-        2. Includes specific examples and applications
-        3. References authoritative sources
-        4. Follows structured reasoning
-        5. Provides actionable insights
-        6. If appropriate, asks follow-up questions for deeper understanding
-
-        CRITICAL SAFETY INSTRUCTIONS:
-        - DO NOT hallucinate facts, figures, or data
-        - ONLY provide information you are confident about
-        - If uncertain about specific details, clearly state limitations
-        - Cite sources when making claims
-        - Avoid making up statistics or specific numbers
-
+        Provide a structured, expert analysis including:
+        1. Specific examples and Indian context
+        2. Citations to authoritative Indian sources
+        3. Actionable insights or practical steps
+        
         Query Type: {query_type}
         Domain: {self.domain.value}"""
         
