@@ -604,8 +604,8 @@ class HotSwappableSMEPlugin:
     def _query_llm(self, prompt: str) -> str:
         """Query the LLM API"""
         data = {
-            # Fast free model — ~5-8s vs ~30s for claude-3-haiku
-            "model": "meta-llama/llama-3.1-8b-instruct:free",
+            # Fast confirmed-free model on OpenRouter
+            "model": "meta-llama/llama-3.2-3b-instruct:free",
             "messages": [
                 {
                     "role": "system",
