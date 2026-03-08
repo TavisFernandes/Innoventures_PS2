@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlugin } from "@/context/PluginContext";
-import { apiService, ChatMessage } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { ChatMessage } from "@/lib/api";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import TypingIndicator from "./TypingIndicator";
@@ -13,12 +14,17 @@ import { FileUpload } from "@/lib/fileUpload";
 
 export default function ChatPanel() {
     const { activePlugin, switchPlugin, plugins } = usePlugin();
+    const { user } = useAuth();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isTyping, setIsTyping] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState<FileUpload[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [uploadedFiles, setUploadedFiles] = useState<FileUpload[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const apiServiceRef = useRef<any>(null);
+
+    const [isAutoSwitching, setIsAutoSwitching] = useState(false);
+
     const prevPluginRef = useRef(activePlugin.id);
 
     const scrollToBottom = useCallback(() => {
@@ -29,30 +35,90 @@ export default function ChatPanel() {
         messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
     }, []);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, scrollToBottom]);
-
-    // Check API connection on mount
-    useEffect(() => {
-        const checkConnection = async () => {
-            try {
-                const isHealthy = await apiService.healthCheck();
-                setIsConnected(isHealthy);
-                if (!isHealthy) {
-                    setError("Unable to connect to backend. Please ensure the backend server is running on localhost:8001");
-                }
-            } catch (err) {
-                setError("Backend connection failed. Please try again later.");
+    const checkBackendConnection = async () => {
+        if (!apiServiceRef.current) {
+            console.log('API service not yet initialized, skipping health check');
+            return;
+        }
+        
+        try {
+            console.log('Checking backend connection...');
+            const isHealthy = await apiServiceRef.current.healthCheck();
+            console.log('Health check result:', isHealthy);
+            setIsConnected(isHealthy);
+            if (!isHealthy) {
+                setError("Backend connection check failed, but chat will still work. Try sending a message!");
+                // Don't retry automatically - let user try manually
             }
-        };
-        checkConnection();
+        } catch (err) {
+            console.error('Connection check error:', err);
+            setError("Backend connection check failed, but chat will still work. Try sending a message!");
+            // Don't fail completely - assume backend is working
+        }
+    };
+
+    // Initialize API service only on client side
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            import('@/lib/api').then(({ apiService }) => {
+                apiServiceRef.current = apiService;
+                if (user?.uid) {
+                    apiServiceRef.current.setUserId(user.uid);
+                }
+                // Now that API service is ready, check connection
+                checkBackendConnection();
+            });
+        }
+    }, [checkBackendConnection]);
+
+    // Removed auto-scroll on every message change to prevent automatic dragging
+    // Users can now scroll freely through chat history
+
+    // Load session history if continuing a previous chat
+    useEffect(() => {
+        const sessionId = localStorage.getItem('currentSessionId');
+        if (sessionId) {
+            loadSessionHistory(sessionId);
+            // Clear the stored session ID after loading
+            localStorage.removeItem('currentSessionId');
+        }
     }, []);
 
-    // Add welcome message when plugin changes
+    const loadSessionHistory = async (sessionId: string) => {
+        try {
+            const response = await fetch(`https://hackx-2.onrender.com/history/${sessionId}`);
+            const data = await response.json();
+            
+            if (data.messages && data.messages.length > 0) {
+                const historyMessages: ChatMessage[] = data.messages.map((msg: any) => ({
+                    id: msg._id || `history-${Date.now()}-${Math.random()}`,
+                    text: msg.message,
+                    sender: msg.sender,
+                    timestamp: new Date(msg.timestamp),
+                    domain: msg.domain,
+                    confidence: msg.confidence,
+                    sources: msg.sources,
+                    methodology: msg.methodology,
+                    citations: msg.citations,
+                    disclaimer: msg.disclaimer
+                }));
+                setMessages(historyMessages);
+            }
+        } catch (error) {
+            console.error('Error loading session history:', error);
+        }
+    };
+    // Add welcome message when plugin changes (but not on auto-switch)
     useEffect(() => {
         if (prevPluginRef.current !== activePlugin.id) {
             prevPluginRef.current = activePlugin.id;
+            
+            // Skip welcome message if this was an automatic domain switch
+            if (isAutoSwitching) {
+                setIsAutoSwitching(false);
+                return;
+            }
+            
             const welcomeMsg: ChatMessage = {
                 id: `welcome-${activePlugin.id}-${Date.now()}`,
                 text: `${activePlugin.persona} activated. I specialize in ${activePlugin.description.toLowerCase()}. How can I assist you today?`,
@@ -61,16 +127,14 @@ export default function ChatPanel() {
             };
             setMessages((prev) => [...prev, welcomeMsg]);
 
-            // Scroll to bottom when welcome message appears
-            setTimeout(() => scrollToBottom(), 100);
+            // Remove auto-scroll for welcome message
+            // setTimeout(() => scrollToBottom(), 100);
         }
-    }, [activePlugin, scrollToBottom]);
+    }, [activePlugin, scrollToBottom, isAutoSwitching]);
 
     const handleSend = async (text: string) => {
-        if (!isConnected) {
-            setError("Cannot send message. Backend is not connected.");
-            return;
-        }
+        // Allow sending messages even if connection check failed
+        // The backend is likely working even if health check fails due to CORS
 
         const userMsg: ChatMessage = {
             id: `user-${Date.now()}`,
@@ -83,17 +147,17 @@ export default function ChatPanel() {
         setIsTyping(true);
         setError(null);
 
-        // Scroll to bottom when response arrives
-        setTimeout(() => scrollToBottom(), 100);
+        // Remove auto-scroll - let user control scrolling
+        // setTimeout(() => scrollToBottom(), 500);
 
         try {
             let response;
 
             // Use multi-modal messaging if files are uploaded
             if (uploadedFiles.length > 0) {
-                response = await apiService.sendMultiModalMessage(text, uploadedFiles);
+                response = await apiServiceRef.current.sendMultiModalMessage(text, uploadedFiles);
             } else {
-                response = await apiService.sendMessage(text);
+                response = await apiServiceRef.current.sendMessage(text);
             }
 
             setIsTyping(false);
@@ -113,24 +177,46 @@ export default function ChatPanel() {
             };
 
             setMessages((prev) => [...prev, aiMsg]);
+            setIsConnected(true); // Mark as connected if message succeeds
+            setError(null); // Clear any previous errors
 
             if (response.domain) {
-                const matched = plugins.find(p =>
-                    p.id.toLowerCase() === response.domain.toLowerCase() ||
-                    p.name.toLowerCase() === response.domain.toLowerCase() ||
-                    p.persona.toLowerCase() === response.domain.toLowerCase()
-                );
+                console.log("Response domain:", response.domain);
+                console.log("Current active plugin:", activePlugin.id);
+                
+                // Map backend domain names to frontend plugin IDs
+                const domainMapping: { [key: string]: string } = {
+                    'legal': 'legal',
+                    'contract_law': 'legal',
+                    'corporate_law': 'legal',
+                    'regulatory_compliance': 'legal',
+                    'finance': 'finance',
+                    'banking': 'finance',
+                    'investment': 'finance',
+                    'risk_management': 'finance',
+                    'loan_analysis': 'finance'
+                };
+                
+                const targetPluginId = domainMapping[response.domain.toLowerCase()] || response.domain.toLowerCase();
+                console.log("Target plugin ID:", targetPluginId);
+                
+                const matched = plugins.find(p => p.id.toLowerCase() === targetPluginId);
+                console.log("Matched plugin:", matched);
+                
                 if (matched && matched.id !== activePlugin.id) {
+                    console.log("Switching plugin from", activePlugin.id, "to", matched.id);
+                    setIsAutoSwitching(true); // Mark as auto-switch to suppress welcome message
                     switchPlugin(matched.id);
+                } else {
+                    console.log("No plugin switch needed - matched:", matched, "active:", activePlugin.id);
                 }
             }
 
             // Clear uploaded files after sending
             setUploadedFiles([]);
 
-            // Scroll to bottom when response arrives
-            setTimeout(() => scrollToBottom(), 100);
-
+            // Remove auto-scroll - let user control scrolling
+            // setTimeout(() => scrollToBottom(), 500);
         } catch (err) {
             setIsTyping(false);
             setError("Failed to get response from backend. Please try again.");
@@ -138,14 +224,14 @@ export default function ChatPanel() {
             // Add error message
             const errorMsg: ChatMessage = {
                 id: `error-${Date.now()}`,
-                text: "I apologize, but I'm having trouble connecting to the backend right now. Please ensure the backend server is running on localhost:8001.",
+                text: "I apologize, but I'm having trouble connecting to the backend right now. However, I'll still try to help you with the information available. Please try again in a moment.",
                 sender: "ai",
                 timestamp: new Date(),
             };
             setMessages((prev) => [...prev, errorMsg]);
 
-            // Scroll to bottom when error message arrives
-            setTimeout(() => scrollToBottom(), 100);
+            // Remove auto-scroll - let user control scrolling
+            // setTimeout(() => scrollToBottom(), 500);
         }
     };
 
@@ -183,7 +269,7 @@ export default function ChatPanel() {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
                 {messages.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center text-center">
                         <motion.div
@@ -209,7 +295,7 @@ export default function ChatPanel() {
                             </p>
                             {!isConnected && (
                                 <p className="text-yellow-400 text-sm max-w-sm mt-4">
-                                    ⚠️ Backend server is not running. Please start the backend to enable chat functionality.
+                                    ⚠️ Backend connection check failed, but chat will still work. Try sending a message!
                                 </p>
                             )}
                         </motion.div>
@@ -254,7 +340,7 @@ export default function ChatPanel() {
                 {/* File Upload */}
                 <FileUploadComponent
                     onFilesSelected={handleFilesSelected}
-                    disabled={!isConnected}
+                    disabled={false}
                 />
 
                 {/* Uploaded Files Display */}
@@ -274,7 +360,7 @@ export default function ChatPanel() {
                     </div>
                 )}
 
-                <ChatInput onSend={handleSend} disabled={!isConnected} />
+                <ChatInput onSend={handleSend} disabled={false} />
             </div>
         </div>
     );

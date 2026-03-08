@@ -1,0 +1,26 @@
+# SME-Plug Configuration - Ultra-Optimized for Speed
+
+model:
+  type: "llama"                   # "gemini" or "llama"
+  gemini_model_name: "gemini-1.5-flash"
+  llama_model_name: "llama3.2:3b"    # Ollama model name
+  use_ollama: true
+  # Ultra-aggressive speed optimizations
+  temperature: 0.01                # Near-zero for deterministic, fastest responses
+  top_p: 0.5                      # Very focused sampling
+  max_tokens: 150                 # Reduced from 200 for speed
+  num_ctx: 512                    # Halved from 1024 for minimal context
+  num_predict: 150                 # Explicit token limit
+  repeat_penalty: 1.2              # Higher penalty to reduce loops
+  stop: ["\n\n", "###", "--", "•", "1.", "2."]  # More stop patterns
+  mirostat: 2                     # Enable mirostat sampling for speed
+  mirostat_eta: 0.1               # Mirostat learning rate
+  mirostat_tau: 5.0               # Mirostat target entropy
+
+rag:
+  docs_dir: "./docs"
+  top_k: 1                        # Reduced to 1 for fastest retrieval
+  chunk_size: 300                  # Smaller chunks for faster processing
+  chunk_overlap: 0                  # No overlap for speed
+
+domain: "finance"

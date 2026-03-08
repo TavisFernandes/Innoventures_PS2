@@ -1,0 +1,17 @@
+# Ignore everything except Frontend
+Backend/
+Domain/
+Source/
+sme_plugin/
+sme_plugin_api/
+*.py
+__pycache__/
+*.pyc
+.git/
+.env
+Procfile
+render.yaml
+test_backend.py
+run_api.py
+run_app.py
+README.md

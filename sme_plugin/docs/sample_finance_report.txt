@@ -1,0 +1,41 @@
+ACME Corp — Annual Financial Report FY2025
+
+Section 1: Executive Summary
+ACME Corp reported total revenue of $12.4 billion for FY2025, representing a 14% year-over-year increase.
+Net income reached $1.85 billion, with an operating margin of 18.2%.
+Free cash flow was $2.1 billion, up 22% from the prior year.
+The company returned $800 million to shareholders via dividends and share buybacks.
+
+Section 2: Revenue Breakdown
+- Consumer Products Division: $5.2B (42% of total revenue, +11% YoY)
+- Enterprise Solutions Division: $4.8B (39% of total revenue, +18% YoY)
+- Cloud Services Division: $2.4B (19% of total revenue, +21% YoY)
+
+Section 3: Key Financial Metrics
+- Earnings Per Share (EPS): $4.62 (diluted), up from $3.91 in FY2024
+- Price-to-Earnings Ratio (P/E): 28.3x based on closing price of $130.75
+- Return on Equity (ROE): 24.1%
+- Debt-to-Equity Ratio: 0.42
+- Current Ratio: 2.1
+- CAGR (5-year revenue): 12.3%
+
+Section 4: Risk Factors
+1. Foreign exchange exposure — 35% of revenue is denominated in non-USD currencies.
+2. Supply chain disruptions remain elevated in the semiconductor sector.
+3. Regulatory risks in EU and APAC markets around data privacy legislation.
+4. Rising interest rates could impact the cost of the company's $3.2B in outstanding debt.
+5. Competitive pressure from emerging AI-first competitors in the enterprise segment.
+
+Section 5: Forward Guidance
+Management projects FY2026 revenue of $13.8–$14.2 billion (11–15% growth).
+EPS guidance is $5.00–$5.30.
+Capital expenditure planned at $1.5 billion, primarily for cloud infrastructure expansion.
+The company expects to maintain its dividend payout ratio of approximately 30%.
+
+Section 6: Balance Sheet Highlights (as of Dec 31, 2025)
+- Total Assets: $28.5B
+- Total Liabilities: $11.2B
+- Shareholders' Equity: $17.3B
+- Cash and Cash Equivalents: $4.8B
+- Long-term Debt: $3.2B
+- Goodwill and Intangible Assets: $6.1B

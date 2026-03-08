@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useScroll, useTransform, motion } from "framer-motion";
 
 const FRAME_COUNT = 240;
@@ -20,6 +20,39 @@ export default function BrainSequence() {
     // Map scroll 0-1 to frame 1-240
     const frameIndex = useTransform(scrollYProgress, [0, 1], [1, FRAME_COUNT]);
 
+    const renderFrame = useCallback((index: number, canvas: HTMLCanvasElement, images: HTMLImageElement[]) => {
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const img = images[index];
+        if (img && img.complete) {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate aspect ratio fit (cover)
+            const canvasAspect = canvas.width / canvas.height;
+            const imgAspect = img.width / img.height;
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (canvasAspect > imgAspect) {
+                // Canvas is wider than image
+                drawHeight = canvas.height;
+                drawWidth = drawHeight * imgAspect;
+                offsetX = (canvas.width - drawWidth) / 2;
+                offsetY = 0;
+            } else {
+                // Image is wider than canvas
+                drawWidth = canvas.width;
+                drawHeight = drawWidth / imgAspect;
+                offsetX = 0;
+                offsetY = (canvas.height - drawHeight) / 2;
+            }
+
+            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+        }
+    }, []);
+
     useEffect(() => {
         // Preload images
         let loadedCount = 0;
@@ -36,7 +69,7 @@ export default function BrainSequence() {
 
                 // Draw first frame exactly once when it loads
                 if (i === 1) {
-                    renderFrame(1);
+                    renderFrame(1, canvasRef.current!, imagesRef.current);
                 }
             };
         }
@@ -46,44 +79,14 @@ export default function BrainSequence() {
         };
     }, []);
 
-    const renderFrame = (index: number) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        const img = imagesRef.current[index];
-        if (img && img.complete) {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Calculate aspect ratio fit (cover)
-            const hRatio = canvas.width / img.width;
-            const vRatio = canvas.height / img.height;
-            const ratio = Math.max(hRatio, vRatio);
-
-            const centerShift_x = (canvas.width - img.width * ratio) / 2;
-            const centerShift_y = (canvas.height - img.height * ratio) / 2;
-
-            ctx.drawImage(
-                img,
-                0, 0, img.width, img.height,
-                centerShift_x, centerShift_y, img.width * ratio, img.height * ratio
-            );
-        } else if (index > 1) {
-            // Fallback: if the requested frame isn't loaded, try to draw the previous one
-            renderFrame(index - 1);
-        }
-    };
-
     useEffect(() => {
         let animationFrameId: number;
 
-        // Update canvas whenever scroll changes the frame index
+        // Update canvas whenever scroll changes frame index
         const unsubscribe = frameIndex.on("change", (latest) => {
             const roundedIndex = Math.min(FRAME_COUNT, Math.max(1, Math.round(latest)));
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
-            animationFrameId = requestAnimationFrame(() => renderFrame(roundedIndex));
+            animationFrameId = requestAnimationFrame(() => renderFrame(roundedIndex, canvasRef.current!, imagesRef.current));
         });
 
         // Handle resize
@@ -93,7 +96,7 @@ export default function BrainSequence() {
                 const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
                 canvasRef.current.width = window.innerWidth * dpr;
                 canvasRef.current.height = window.innerHeight * dpr;
-                renderFrame(Math.min(FRAME_COUNT, Math.max(1, Math.round(frameIndex.get()))));
+                renderFrame(Math.min(FRAME_COUNT, Math.max(1, Math.round(frameIndex.get()))), canvasRef.current!, imagesRef.current);
             }
         };
 

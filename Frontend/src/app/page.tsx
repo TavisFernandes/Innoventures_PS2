@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from '@/context/AuthContext';
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/sections/HeroSection";
 import ChatDemo from "@/components/ChatDemo";
@@ -10,30 +11,32 @@ import CtaSection from "@/components/sections/CtaSection";
 import BrainSequence from "@/components/BrainSequence";
 
 export default function Home() {
-    return (
-        <main className="min-h-screen relative">
-            <BrainSequence />
-            <Navbar />
+  const { user } = useAuth();
 
-            {/* Hero / Intro */}
-            <HeroSection />
+  return (
+    <main className="min-h-screen relative">
+      <BrainSequence />
+      <Navbar />
 
-            {/* Interactive Chat Demo */}
-            <section className="relative py-16 px-6">
-                <ChatDemo />
-            </section>
+      {/* Hero / Intro */}
+      <HeroSection />
 
-            {/* Plugin Reveal */}
-            <PluginRevealSection />
+      {/* Interactive Chat Demo */}
+      <section className="relative py-16 px-6">
+        <ChatDemo />
+      </section>
 
-            {/* SME Personas & Intelligence */}
-            <PersonasSection />
+      {/* Plugin Reveal */}
+      <PluginRevealSection />
 
-            {/* Enterprise & Customization */}
-            <EnterpriseSection />
+      {/* SME Personas & Intelligence */}
+      <PersonasSection />
 
-            {/* CTA & Closing */}
-            <CtaSection />
-        </main>
-    );
+      {/* Enterprise & Customization */}
+      <EnterpriseSection />
+
+      {/* CTA & Closing */}
+      <CtaSection />
+    </main>
+  );
 }
