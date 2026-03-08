@@ -604,31 +604,31 @@ class HotSwappableSMEPlugin:
     def _query_llm(self, prompt: str) -> str:
         """Query the LLM API"""
         data = {
-            # Fast confirmed-free model on OpenRouter
-            "model": "meta-llama/llama-3.2-3b-instruct:free",
+            # High reliability paid model (extremely low cost)
+            "model": "openai/gpt-4o-mini",
             "messages": [
                 {
                     "role": "system",
                     "content": (
-                        "You are an Indian legal and financial expert. "
-                        "Answer concisely in 2-3 paragraphs using ONLY Indian context "
-                        "(IPC, RBI, SEBI, Indian courts, ₹). "
-                        "Add citations [1][2][3] and a short References section."
+                        "You are an expert Indian legal and financial advisor. "
+                        "Provide detailed, structured answers using ONLY Indian context. "
+                        "Include citations [1][2][3] and a References section with Indian sources. "
+                        "Keep total length to 3-4 concise paragraphs."
                     )
                 },
                 {
                     "role": "user",
-                    "content": prompt + "\n\nUse ONLY Indian laws, institutions, and examples."
+                    "content": prompt
                 }
             ],
-            "max_tokens": 350,
-            "temperature": 0.1,
-            "top_p": 0.5,
+            "max_tokens": 600,
+            "temperature": 0.2,
+            "top_p": 0.9,
         }
         
         try:
             print(f"🔍 Querying LLM with prompt: {prompt[:100]}...")
-            response = requests.post(self.api_url, headers=self.headers, json=data, timeout=15)
+            response = requests.post(self.api_url, headers=self.headers, json=data, timeout=20)
             print(f"📡 API Response Status: {response.status_code}")
             
             if response.status_code == 200:
